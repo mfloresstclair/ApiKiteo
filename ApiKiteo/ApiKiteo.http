@@ -1,0 +1,6 @@
+@ApiKiteo_HostAddress = http://localhost:5291
+
+GET {{ApiKiteo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
