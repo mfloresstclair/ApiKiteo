@@ -14,11 +14,15 @@ using KiteoAdmin.API.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── User Secrets (desarrollo local) ─────────────────────────────────────────
-// Activa: dotnet user-secrets set "ConnectionStrings:DevTest" "Server=..."
-// Activa: dotnet user-secrets set "LdapOptions:BindPassword" "..."
+// ─── Fuentes de configuración por ambiente ────────────────────────────────────
+// Development : appsettings.Development.json  (connection string incluida)
+// Production  : appsettings.Production.json   (solo logging/url)
+//               + variable de entorno ConnectionStrings__KiteoDB en el servidor
+//
+// User-secrets opcionales en dev para sobreescribir la connection string:
+//   dotnet user-secrets set "ConnectionStrings:KiteoDB" "Server=..."
 if (builder.Environment.IsDevelopment())
-    builder.Configuration.AddUserSecrets<Program>();
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
 
 // ─── Options Pattern ──────────────────────────────────────────────────────────
 builder.Services
@@ -41,20 +45,20 @@ builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddTransient<ILdapAuthProvider, LdapAuthProvider>();
 
 // ─── Repositories ─────────────────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthRepository,      AuthRepository>();
-builder.Services.AddScoped<ISemanasRepository,   SemanasRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<ISemanasRepository, SemanasRepository>();
 builder.Services.AddScoped<IEmpleadosRepository, EmpleadosRepository>();
-builder.Services.AddScoped<IVinsRepository,      VinsRepository>();
-builder.Services.AddScoped<IEscaneoRepository,   EscaneoRepository>();
-builder.Services.AddScoped<IAdminRepository,     AdminRepository>();
+builder.Services.AddScoped<IVinsRepository, VinsRepository>();
+builder.Services.AddScoped<IEscaneoRepository, EscaneoRepository>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthService,      AuthService>();
-builder.Services.AddScoped<ISemanasService,   SemanasService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ISemanasService, SemanasService>();
 builder.Services.AddScoped<IEmpleadosService, EmpleadosService>();
-builder.Services.AddScoped<IVinsService,      VinsService>();
-builder.Services.AddScoped<IEscaneoService,   EscaneoService>();
-builder.Services.AddScoped<IAdminService,     AdminService>();
+builder.Services.AddScoped<IVinsService, VinsService>();
+builder.Services.AddScoped<IEscaneoService, EscaneoService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
@@ -76,8 +80,8 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v3", new OpenApiInfo
     {
-        Title       = "KiteoAdmin API",
-        Version     = "v3.0",
+        Title = "KiteoAdmin API",
+        Version = "v3.0",
         Description = "API unificada — KiteoApp v2.7 + KiteoAdmin Dashboard v3.0"
     });
 
@@ -115,6 +119,7 @@ var app = builder.Build();
 
 // ─── Middleware pipeline ──────────────────────────────────────────────────────
 
+// Swagger solo en Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -122,6 +127,7 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v3/swagger.json", "KiteoAdmin API v3.0");
         c.RoutePrefix = string.Empty;   // Swagger en raíz "/"
+        c.DocumentTitle = "KiteoAdmin API";
     });
 }
 
@@ -129,14 +135,14 @@ if (app.Environment.IsDevelopment())
 // Nunca expone detalles internos al cliente
 app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
 {
-    ctx.Response.StatusCode  = 500;
+    ctx.Response.StatusCode = 500;
     ctx.Response.ContentType = "application/json";
 
     await ctx.Response.WriteAsJsonAsync(new
     {
-        exito   = false,
+        exito = false,
         mensaje = "Error interno. Contacta a soporte.",
-        codigo  = "KITEO_500"
+        codigo = "KITEO_500"
     });
 }));
 
