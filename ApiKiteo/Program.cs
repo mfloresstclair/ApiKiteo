@@ -15,12 +15,9 @@ using KiteoAdmin.API.Services.Implementations;
 var builder = WebApplication.CreateBuilder(args);
 
 // ─── Fuentes de configuración por ambiente ────────────────────────────────────
-// Development : appsettings.Development.json  (connection string incluida)
-// Production  : appsettings.Production.json   (solo logging/url)
-//               + variable de entorno ConnectionStrings__KiteoDB en el servidor
-//
-// User-secrets opcionales en dev para sobreescribir la connection string:
-//   dotnet user-secrets set "ConnectionStrings:KiteoDB" "Server=..."
+// Dev  → appsettings.Development.json  (connection string a DevTest incluida)
+// Prod → appsettings.Production.json   (solo logs/url)
+//        + variable de entorno: ConnectionStrings__KiteoDB → DB BOS
 if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>(optional: true);
 

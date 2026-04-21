@@ -1,16 +1,15 @@
 using Microsoft.Data.SqlClient;
-using KiteoAdmin.API.Infrastructure.Cryptography;
 
 namespace KiteoAdmin.API.Infrastructure.Database;
 
 /// <summary>
 /// Fábrica de conexiones SQL Server.
-/// 
-/// Estrategia de resolución de cadena de conexión (por prioridad):
-///   1. Variables de entorno KITEO_AES_KEY + KITEO_CONN_ENCRYPTED  → descifra AES
-///   2. ConnectionStrings:DevTest en configuración (user-secrets / env var)
-/// 
-/// Registrada como Singleton — la cadena se resuelve una sola vez al arrancar.
+///
+/// Resolución de cadena de conexión por prioridad:
+///   Dev  → appsettings.Development.json  (ConnectionStrings:KiteoDB)
+///   Prod → variable de entorno            (ConnectionStrings__KiteoDB)
+///
+/// Singleton — la cadena se resuelve una sola vez al arrancar.
 /// CreateConnection() crea una nueva SqlConnection por llamada (Dapper la abre/cierra).
 /// </summary>
 public sealed class DbConnectionFactory : IDbConnectionFactory
@@ -31,45 +30,38 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
 
     private string ResolveConnectionString(IConfiguration config)
     {
-        // Opción A: AES encriptado (equivalente al Python original)
-        var aesKey      = Environment.GetEnvironmentVariable("Thragg");
-        var encryptedCs = Environment.GetEnvironmentVariable("DvT");
+        var cs = config.GetConnectionString("KiteoDB");
 
-        if (!string.IsNullOrWhiteSpace(aesKey) && !string.IsNullOrWhiteSpace(encryptedCs))
-        {
-            _logger.LogInformation("Resolviendo cadena de conexión vía AES decrypt.");
-            var raw = AesDecryptor.Decrypt(encryptedCs, aesKey);
-            return NormalizeOdbcToSqlClient(raw);
-        }
+        if (string.IsNullOrWhiteSpace(cs))
+            throw new InvalidOperationException(
+                "No se encontró ConnectionStrings:KiteoDB. " +
+                "Dev  → verificar appsettings.Development.json. " +
+                "Prod → verificar variable de entorno ConnectionStrings__KiteoDB.");
 
-        // Opción B: cadena plana desde user-secrets / env var
-        var plain = config.GetConnectionString("KiteoDB");
-        if (!string.IsNullOrWhiteSpace(plain))
-        {
-            _logger.LogInformation("Resolviendo cadena de conexión desde configuración.");
-            return plain;
-        }
+        // Microsoft.Data.SqlClient v4+ cifra por defecto y valida el certificado SSL.
+        // En redes internas donde SQL Server no tiene cert de CA de confianza,
+        // se fuerza Encrypt=False si no viene explícito en la cadena.
+        cs = EnsureEncryptionHandled(cs);
 
-        throw new InvalidOperationException(
-            "No se encontró cadena de conexión. " +
-            "Configura KITEO_AES_KEY + KITEO_CONN_ENCRYPTED, " +
-            "o ConnectionStrings:DevTest en user-secrets.");
+        var safe = System.Text.RegularExpressions.Regex
+            .Replace(cs, @"(?i)Password=[^;]*", "Password=***");
+        _logger.LogDebug("Connection string activa: {Cs}", safe);
+
+        return cs;
     }
 
     /// <summary>
-    /// Convierte tokens ODBC heredados (Data Source=, User ID=, Password=)
-    /// al formato que entiende Microsoft.Data.SqlClient (Server=, UID=, PWD=).
-    /// Replica la normalización del Python original.
+    /// Si la cadena no trae Encrypt= explícito agrega Encrypt=False.
+    /// Evita el error de certificado SSL con Microsoft.Data.SqlClient v4+.
     /// </summary>
-    private static string NormalizeOdbcToSqlClient(string raw)
+    private static string EnsureEncryptionHandled(string cs)
     {
-        // Si ya tiene 'Server=' no hace falta normalizar
-        if (raw.Contains("Server=", StringComparison.OrdinalIgnoreCase))
-            return raw;
+        if (cs.Contains("Encrypt=", StringComparison.OrdinalIgnoreCase))
+            return cs;
 
-        return raw
-            .Replace("Data Source=",  "Server=",   StringComparison.OrdinalIgnoreCase)
-            .Replace("User ID=",      "User Id=",   StringComparison.OrdinalIgnoreCase)
-            .Replace("Password=",     "Password=",  StringComparison.OrdinalIgnoreCase);
+        if (!cs.TrimEnd().EndsWith(";"))
+            cs += ";";
+
+        return cs + "Encrypt=False;TrustServerCertificate=True;";
     }
 }
