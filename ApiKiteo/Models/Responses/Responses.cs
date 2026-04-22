@@ -59,6 +59,7 @@ public sealed record SemanaLocResponse(
 public sealed record SemanaGrpStatusItem
 {
     public string  Grupo      { get; init; } = string.Empty;
+    public string? Vindesc    { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
     public int     Vines      { get; init; }
     public decimal Porcentaje { get; init; }
 }

@@ -14,7 +14,7 @@ public sealed class VinsService : IVinsService
 
     public VinsService(IVinsRepository repo, ILogger<VinsService> logger)
     {
-        _repo   = repo;
+        _repo = repo;
         _logger = logger;
     }
 
@@ -31,10 +31,10 @@ public sealed class VinsService : IVinsService
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new SemanaLocItem
                 {
-                    Vin         = d.GetStr("vin"),
-                    Locacion    = d.GetInt("locacion"),
-                    Grupo       = d.GetStr("grupo"),
-                    Item        = d.GetStr("item"),
+                    Vin = d.GetStr("vin"),
+                    Locacion = d.GetInt("locacion"),
+                    Grupo = d.GetStr("grupo"),
+                    Item = d.GetStr("item"),
                     Descripcion = d.GetStr("descripcion")
                 })
                 .ToList();
@@ -63,8 +63,9 @@ public sealed class VinsService : IVinsService
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new SemanaGrpStatusItem
                 {
-                    Grupo      = d.GetStr("Grupo")      ?? d.GetStr("grupo") ?? string.Empty,
-                    Vines      = d.GetInt("vines")      ?? 0,
+                    Grupo = d.GetStr("Grupo") ?? d.GetStr("grupo") ?? string.Empty,
+                    Vindesc = NormalizeVindesc(d.GetStr("vindesc")),
+                    Vines = d.GetInt("vines") ?? 0,
                     Porcentaje = d.GetDecimal("Porcentaje") ?? 0m
                 })
                 .ToList();
@@ -89,7 +90,7 @@ public sealed class VinsService : IVinsService
         {
             // El SP espera: {"grupos": ["GRP01","GRP02"]}
             var jsonGrupos = JsonSerializer.Serialize(new { grupos = request.Grupos });
-            var det        = request.Det ?? "1";
+            var det = request.Det ?? "1";
 
             var rows = await _repo.GetSemanaGrpFaltantesAsync(
                 request.Wkname, jsonGrupos, det, ct);
@@ -125,8 +126,8 @@ public sealed class VinsService : IVinsService
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new SemanaVinStatusItem
                 {
-                    Locacion   = d.GetInt("Locacion")    ?? d.GetInt("locacion"),
-                    Vin        = d.GetStr("Vin")         ?? d.GetStr("vin"),
+                    Locacion = d.GetInt("Locacion") ?? d.GetInt("locacion"),
+                    Vin = d.GetStr("Vin") ?? d.GetStr("vin"),
                     Porcentaje = d.GetDecimal("Porcentaje") ?? 0m
                 })
                 .ToList();
@@ -141,4 +142,36 @@ public sealed class VinsService : IVinsService
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
     }
+    // ── Helper: normalizar vindesc → formato estandarizado ─────────────────
+    // Regla única: si contiene número + WDO (con cualquier prefijo o sufijo)
+    //              extraer solo NúmeroWDO sin espacios ni sufijos.
+    //              Si no tiene WDO → pasar crudo (BodyCVZC, BodyCVZD, etc.)
+    //
+    //   "CEEA+ 8 WDO"   → "8WDO"
+    //   "CEEA+ 10 WDO"  → "10WDO"
+    //   "12 WDO EFX"    → "12WDO"   ← sufijo removido
+    //   "12 WDO HDX"    → "12WDO"   ← sufijo removido
+    //   "13 WDO EFX"    → "13WDO"   ← sufijo removido
+    //   "10WDO"         → "10WDO"   ← ya correcto
+    //   "5WDO"          → "5WDO"    ← ya correcto
+    //   "BodyCVZC"      → "BodyCVZC" ← sin WDO, pasa crudo
+    //   null / ""       → null
+    private static string? NormalizeVindesc(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        // Buscar patrón: cualquier número seguido (con o sin espacios) de WDO
+        // Captura solo el número — el sufijo (EFX, HDX, etc.) y el prefijo (CEEA+) se ignoran 
+        var match = System.Text.RegularExpressions.Regex.Match(
+            raw.Trim(),
+            @"(\d+)\s*WDO",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        if (match.Success)
+            return match.Groups[1].Value + "WDO";
+
+        // Sin número+WDO → devolver crudo trimmed (BodyCVZC, BodyCVZD, etc.)
+        return raw.Trim();
+    }
+
 }
