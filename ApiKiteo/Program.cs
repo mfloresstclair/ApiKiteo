@@ -19,15 +19,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Cuando corre como .exe directo o en VS no tiene efecto.
 builder.Host.UseWindowsService();
 
-// ─── Fuentes de configuración por ambiente ────────────────────────────────────
-// Dev y Prod: variables de entorno Thragg (AES key) + DvT (conn string cifrada)
-//             disponibles en todas las PCs de la red → DbConnectionFactory las lee
-//
-// Fallback (override local):
-//   ConnectionStrings:KiteoDB en appsettings.Development.json
-//   o user-secrets: dotnet user-secrets set "ConnectionStrings:KiteoDB" "Server=..."
-if (builder.Environment.IsDevelopment())
-    builder.Configuration.AddUserSecrets<Program>(optional: true);
+// ─── Configuración ───────────────────────────────────────────────────────────
+// Un solo appsettings.json — sin ambientes.
+// ConnectionString: variables de entorno Thragg (AES key) + DvT (conn string cifrada)
+// DatabaseOverride: cambia la BD destino sin tocar las env vars.
 
 // ─── Options Pattern ──────────────────────────────────────────────────────────
 builder.Services
@@ -124,17 +119,14 @@ var app = builder.Build();
 
 // ─── Middleware pipeline ──────────────────────────────────────────────────────
 
-// Swagger solo en Development
-if (app.Environment.IsDevelopment())
+// Swagger siempre disponible — un solo ambiente
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v3/swagger.json", "KiteoAdmin API v3.0");
-        c.RoutePrefix = string.Empty;   // Swagger en raíz "/"
-        c.DocumentTitle = "KiteoAdmin API";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v3/swagger.json", "KiteoAdmin API v3.0");
+    c.RoutePrefix = string.Empty;
+    c.DocumentTitle = "KiteoAdmin API";
+});
 
 // Handler global de excepciones no capturadas
 // Nunca expone detalles internos al cliente
