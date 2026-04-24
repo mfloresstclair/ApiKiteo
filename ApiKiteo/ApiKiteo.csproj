@@ -13,7 +13,8 @@
     <!-- Data access -->
     <PackageReference Include="Dapper"                         Version="2.1.35"  />
     <PackageReference Include="Microsoft.Data.SqlClient"       Version="5.2.1"   />
-
+	
+	<PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
     <!-- LDAP authentication -->
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
 

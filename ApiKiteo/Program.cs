@@ -14,10 +14,18 @@ using KiteoAdmin.API.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ─── Windows Service support ──────────────────────────────────────────────────
+// Permite que la app corra como Windows Service (sc create / sc start).
+// Cuando corre como .exe directo o en VS no tiene efecto.
+builder.Host.UseWindowsService();
+
 // ─── Fuentes de configuración por ambiente ────────────────────────────────────
-// Dev  → appsettings.Development.json  (connection string a DevTest incluida)
-// Prod → appsettings.Production.json   (solo logs/url)
-//        + variable de entorno: ConnectionStrings__KiteoDB → DB BOS
+// Dev y Prod: variables de entorno Thragg (AES key) + DvT (conn string cifrada)
+//             disponibles en todas las PCs de la red → DbConnectionFactory las lee
+//
+// Fallback (override local):
+//   ConnectionStrings:KiteoDB en appsettings.Development.json
+//   o user-secrets: dotnet user-secrets set "ConnectionStrings:KiteoDB" "Server=..."
 if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>(optional: true);
 
