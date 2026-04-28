@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Controllers;
+namespace ApiKiteo.API.Controllers;
 
 /// <summary>
 /// Empleados — replica GET /empleado.

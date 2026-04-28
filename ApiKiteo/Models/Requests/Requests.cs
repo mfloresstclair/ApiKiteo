@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace KiteoAdmin.API.Models.Requests;
+namespace ApiKiteo.API.Models.Requests;
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 

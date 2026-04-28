@@ -1,5 +1,5 @@
 ﻿​# ============================================================
-# KiteoAdmin + KiteoApp API (ordenado segun Swagger v3.0)
+# ApiKiteo + KiteoApp API (ordenado segun Swagger v3.0)
 # ============================================================
 
 from flask import Flask, request, jsonify, abort
@@ -126,7 +126,7 @@ SP_VIN_TO_ADJUST        = "Kit_vin_to_adjust"
 SP_VIN_WK_PEND          = "Kit_vin_wk_pend"
 
 # ============================================================
-# Stored Procedures (NUEVOS KiteoAdmin)
+# Stored Procedures (NUEVOS ApiKiteo)
 # ============================================================
 SP_WK_APPROVE           = "Kit_vin_wk_approve"   # Swagger v3.0
 # SP_WK_CREATE          = "sp_CrearSemanaEnDB" # TODO
@@ -778,7 +778,7 @@ def escanear():
 
 # ============================================================
 # ============================================================
-# NUEVOS — KiteoAdmin Dashboard v3.0 (se dejan TODO donde faltan)
+# NUEVOS — ApiKiteo Dashboard v3.0 (se dejan TODO donde faltan)
 # ============================================================
 # ============================================================
 

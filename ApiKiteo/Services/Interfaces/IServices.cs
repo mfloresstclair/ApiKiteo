@@ -1,8 +1,8 @@
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Models.Responses;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Models.Responses;
 
-namespace KiteoAdmin.API.Services.Interfaces;
+namespace ApiKiteo.API.Services.Interfaces;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 

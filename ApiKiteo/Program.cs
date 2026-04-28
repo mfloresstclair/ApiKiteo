@@ -1,15 +1,16 @@
 using Microsoft.OpenApi.Models;
-using KiteoAdmin.API.Configuration;
-using KiteoAdmin.API.Infrastructure.Database;
-using KiteoAdmin.API.Infrastructure.Ldap;
-using KiteoAdmin.API.Repositories.Interfaces;
-using KiteoAdmin.API.Repositories.Implementations;
-using KiteoAdmin.API.Services.Interfaces;
-using KiteoAdmin.API.Services.Implementations;
+using Serilog;
+using ApiKiteo.API.Configuration;
+using ApiKiteo.API.Infrastructure.Database;
+using ApiKiteo.API.Infrastructure.Ldap;
+using ApiKiteo.API.Repositories.Interfaces;
+using ApiKiteo.API.Repositories.Implementations;
+using ApiKiteo.API.Services.Interfaces;
+using ApiKiteo.API.Services.Implementations;
 
 // ══════════════════════════════════════════════════════════════════════════════
-// KiteoAdmin API  —  ASP.NET Core 8
-// Migración de KiteoApp + KiteoAdmin Python → C#
+// ApiKiteo API  —  ASP.NET Core 8
+// Migración de KiteoApp + ApiKiteo Python → C#
 // ══════════════════════════════════════════════════════════════════════════════
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,9 +81,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v3", new OpenApiInfo
     {
-        Title = "KiteoAdmin API",
+        Title = "ApiKiteo API",
         Version = "v3.0",
-        Description = "API unificada — KiteoApp v2.7 + KiteoAdmin Dashboard v3.0"
+        Description = "API unificada — KiteoApp v2.7 + ApiKiteo Dashboard v3.0"
     });
 
     // Agrupa los endpoints igual que el Swagger Python original
@@ -107,11 +108,39 @@ builder.Services.AddCors(opts =>
               .AllowAnyMethod()
               .AllowAnyHeader()));
 
-// ─── Logging ──────────────────────────────────────────────────────────────────
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-if (builder.Environment.IsDevelopment())
-    builder.Logging.AddDebug();
+// ─── Logging con Serilog ──────────────────────────────────────────────────────
+// Archivo: C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-YYYYMMDD.log
+// Rolling diario, 7 días de retención, auto-borrado.
+// Corriendo como Windows Service no hay consola — los logs quedan en archivo.
+Log.Logger = new LoggerConfiguration()
+    // Nivel base — captura todo de la API: requests, queries, errores, warnings
+    .MinimumLevel.Debug()
+
+    // Silenciar ruido interno de .NET que no aporta para debug
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", Serilog.Events.LogEventLevel.Information)  // requests HTTP
+    .MinimumLevel.Override("Microsoft.Data.SqlClient", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http", Serilog.Events.LogEventLevel.Warning)
+
+    // Todo el código propio de la API en Debug — controllers, services, repos, infra
+    .MinimumLevel.Override("ApiKiteo.API", Serilog.Events.LogEventLevel.Debug)
+
+    .Enrich.FromLogContext()
+
+    // Consola — visible al correr como .exe directo en dev
+    .WriteTo.Console(outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+
+    // Archivo — siempre activo, incluyendo cuando corre como Windows Service
+    .WriteTo.File(
+        path: @"C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-.log",
+        rollingInterval: RollingInterval.Day,    // un archivo por día
+        retainedFileCountLimit: 7,                      // auto-borrar logs de más de 7 días
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+// UseSerilog reemplaza todo el sistema de logging — no llamar ClearProviders después
+builder.Host.UseSerilog();
 
 // ══════════════════════════════════════════════════════════════════════════════
 var app = builder.Build();
@@ -123,13 +152,20 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v3/swagger.json", "KiteoAdmin API v3.0");
+    c.SwaggerEndpoint("/swagger/v3/swagger.json", "ApiKiteo API v3.0");
     c.RoutePrefix = string.Empty;
-    c.DocumentTitle = "KiteoAdmin API";
+    c.DocumentTitle = "ApiKiteo API";
 });
 
 // Handler global de excepciones no capturadas
 // Nunca expone detalles internos al cliente
+// Log automático de cada request HTTP: método, ruta, status, duración
+// Formato en log: GET /semanas?cliente=TBB → 200 OK en 45ms
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.MessageTemplate = "{RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms";
+});
+
 app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
 {
     ctx.Response.StatusCode = 500;

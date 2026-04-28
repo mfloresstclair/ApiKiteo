@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Models.Responses;
+namespace ApiKiteo.API.Models.Responses;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -17,16 +17,16 @@ public sealed record AuthLoginResponse(
 /// </summary>
 public sealed record UserAccessRow
 {
-    public string? Access    { get; init; }
-    public bool?   LPaccess  { get; init; }
-    public bool?   FAaccess  { get; init; }
+    public string? Access { get; init; }
+    public bool? LPaccess { get; init; }
+    public bool? FAaccess { get; init; }
 }
 
 // ─── Semanas ──────────────────────────────────────────────────────────────────
 
 public sealed record SemanaItem
 {
-    public string  Clave   { get; init; } = string.Empty;
+    public string Clave { get; init; } = string.Empty;
     public string? Estatus { get; init; }
 }
 
@@ -40,17 +40,17 @@ public sealed record EmpleadoResponse(string Nombre);
 
 public sealed record SemanaLocItem
 {
-    public string?  Vin        { get; init; }
-    public int?     Locacion   { get; init; }
-    public string?  Grupo      { get; init; }
-    public string?  Item       { get; init; }
-    public string?  Descripcion{ get; init; }
+    public string? Vin { get; init; }
+    public int? Locacion { get; init; }
+    public string? Grupo { get; init; }
+    public string? Item { get; init; }
+    public string? Descripcion { get; init; }
 }
 
 public sealed record SemanaLocResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
-    int    Total,
+    int Total,
     IReadOnlyList<SemanaLocItem> Resultados
 );
 
@@ -58,16 +58,16 @@ public sealed record SemanaLocResponse(
 
 public sealed record SemanaGrpStatusItem
 {
-    public string  Grupo      { get; init; } = string.Empty;
-    public string? Vindesc    { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
-    public int     Vines      { get; init; }
+    public string Grupo { get; init; } = string.Empty;
+    public string? Vindesc { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
+    public int Vines { get; init; }
     public decimal Porcentaje { get; init; }
 }
 
 public sealed record SemanaGrpStatusResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
-    int    Total,
+    int Total,
     IReadOnlyList<SemanaGrpStatusItem> Resultados
 );
 
@@ -76,10 +76,10 @@ public sealed record SemanaGrpStatusResponse(
 // El SP devuelve columnas dinámicas (det="1" = resumen, det="CEA" = detalle),
 // se usan Dictionary<string,object?> para no romper ante cambios de schema.
 public sealed record SemanaGrpFaltantesResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
     string Det,
-    int    Total,
+    int Total,
     IReadOnlyList<Dictionary<string, object?>> Resultados
 );
 
@@ -87,15 +87,15 @@ public sealed record SemanaGrpFaltantesResponse(
 
 public sealed record SemanaVinStatusItem
 {
-    public int?    Locacion   { get; init; }
-    public string? Vin        { get; init; }
+    public int? Locacion { get; init; }
+    public string? Vin { get; init; }
     public decimal Porcentaje { get; init; }
 }
 
 public sealed record SemanaVinStatusResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
-    int    Total,
+    int Total,
     IReadOnlyList<SemanaVinStatusItem> Resultados
 );
 
@@ -103,17 +103,17 @@ public sealed record SemanaVinStatusResponse(
 
 public sealed record VinItem
 {
-    public string?  Vin   { get; init; }
-    public object?  Loc   { get; init; }   // puede ser int o string según SP
-    public string?  Grupo { get; init; }
-    public string?  Item  { get; init; }
+    public string? Vin { get; init; }
+    public object? Loc { get; init; }   // puede ser int o string según SP
+    public string? Grupo { get; init; }
+    public string? Item { get; init; }
 }
 
 public sealed record VinToAdjustResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
     string Item,
-    int    Total,
+    int Total,
     IReadOnlyList<VinItem> Vines
 );
 
@@ -124,48 +124,49 @@ public sealed record VinToAdjustResponse(
 /// </summary>
 public sealed record EscaneoEvento
 {
-    public string?  Mensaje             { get; init; }
-    public int?     Actualizados        { get; init; }
-    public int?     Pendientes          { get; init; }
-    public int?     Requested           { get; init; }
-    public int?     TotalItem           { get; init; }
-    public int?     Excedente           { get; init; }
-    public int?     Faltante            { get; init; }
-    public string?  LocacionesAjustadas { get; init; }
+    public string? Mensaje { get; init; }
+    public int? Actualizados { get; init; }
+    public int? Pendientes { get; init; }
+    public int? Requested { get; init; }
+    public int? TotalItem { get; init; }
+    public int? Excedente { get; init; }
+    public int? Faltante { get; init; }
+    public string? LocacionesAjustadas { get; init; }
 }
 
 public sealed record EscanearAjusteResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
     string Item,
-    int    Total,
+    int Total,
     EscaneoEvento? Evento,
     IReadOnlyList<VinItem> Vines
 );
 
 public sealed record EscanearResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
     string Item,
-    int    Total,
+    int Total,
     EscaneoEvento? Evento,
-    IReadOnlyList<VinItem>                      Vines,
-    IReadOnlyList<Dictionary<string, object?>>  GruposProgreso
+    IReadOnlyList<VinItem> Vines,
+    IReadOnlyList<Dictionary<string, object?>> GruposProgreso,
+    decimal? WeekPerc       // % total de la semana para este item
 );
 
 // ─── Escaneo — semana_vines_entrega ──────────────────────────────────────────
 
 public sealed record SemanaVinesEntregaResponse(
-    bool   Ok,
+    bool Ok,
     string Wkname,
     string Empleado,
-    int    TotalActualizados,
+    int TotalActualizados,
     IReadOnlyList<Dictionary<string, object?>> VinesActualizados
 );
 
 // ─── Admin — semanas ──────────────────────────────────────────────────────────
 
 public sealed record AprobarSemanaResponse(
-    bool   Ok,
+    bool Ok,
     string Mensaje
 );

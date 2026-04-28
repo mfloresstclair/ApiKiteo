@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Common;
+namespace ApiKiteo.API.Common;
 
 /// <summary>
 /// Códigos de error estándar. Replicados desde la API Python original.

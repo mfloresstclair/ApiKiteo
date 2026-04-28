@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Infrastructure.Ldap;
+namespace ApiKiteo.API.Infrastructure.Ldap;
 
 /// <summary>
 /// Contrato para autenticación contra Active Directory / LDAP.

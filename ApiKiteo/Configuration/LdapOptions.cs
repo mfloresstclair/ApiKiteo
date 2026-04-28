@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Configuration;
+namespace ApiKiteo.API.Configuration;
 
 /// <summary>
 /// Configuración de Active Directory.

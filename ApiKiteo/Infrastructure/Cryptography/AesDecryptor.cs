@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace KiteoAdmin.API.Infrastructure.Cryptography;
+namespace ApiKiteo.API.Infrastructure.Cryptography;
 
 /// <summary>
 /// Desencripta una cadena cifrada con AES-CBC + IV prepend (16 bytes).

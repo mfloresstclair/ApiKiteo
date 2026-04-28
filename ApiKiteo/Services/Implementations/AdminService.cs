@@ -1,10 +1,10 @@
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Models.Responses;
-using KiteoAdmin.API.Repositories.Interfaces;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Models.Responses;
+using ApiKiteo.API.Repositories.Interfaces;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Services.Implementations;
+namespace ApiKiteo.API.Services.Implementations;
 
 public sealed class AdminService : IAdminService
 {

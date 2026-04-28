@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
-using KiteoAdmin.API.Infrastructure.Cryptography;
+using ApiKiteo.API.Infrastructure.Cryptography;
 
-namespace KiteoAdmin.API.Infrastructure.Database;
+namespace ApiKiteo.API.Infrastructure.Database;
 
 /// <summary>
 /// Fábrica de conexiones SQL Server.

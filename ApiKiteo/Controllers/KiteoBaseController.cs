@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using KiteoAdmin.API.Common;
+using ApiKiteo.API.Common;
 
-namespace KiteoAdmin.API.Controllers;
+namespace ApiKiteo.API.Controllers;
 
 /// <summary>
 /// Base de todos los controllers.

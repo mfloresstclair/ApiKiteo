@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Controllers.Admin;
+namespace ApiKiteo.API.Controllers.Admin;
 
 /// <summary>
 /// Admin — Semanas. Grupo "Admin — Semanas" del Swagger v3.0.

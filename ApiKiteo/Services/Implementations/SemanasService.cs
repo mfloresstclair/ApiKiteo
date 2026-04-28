@@ -1,9 +1,9 @@
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Models.Responses;
-using KiteoAdmin.API.Repositories.Interfaces;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Models.Responses;
+using ApiKiteo.API.Repositories.Interfaces;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Services.Implementations;
+namespace ApiKiteo.API.Services.Implementations;
 
 public sealed class SemanasService : ISemanasService
 {
@@ -12,7 +12,7 @@ public sealed class SemanasService : ISemanasService
 
     public SemanasService(ISemanasRepository repo, ILogger<SemanasService> logger)
     {
-        _repo   = repo;
+        _repo = repo;
         _logger = logger;
     }
 
@@ -21,8 +21,12 @@ public sealed class SemanasService : ISemanasService
     {
         try
         {
+            _logger.LogDebug("Query GetSemanas | cliente={Cliente} tipo={Tipo}", cliente, tipo);
+
             var rows = await _repo.GetSemanasAsync(cliente, tipo, ct);
             var list = rows.ToList();
+
+            _logger.LogInformation("GetSemanas | cliente={Cliente} tipo={Tipo} resultados={Count}", cliente, tipo, list.Count);
 
             if (list.Count == 0)
                 return ServiceResult<IReadOnlyList<SemanaItem>>.Fail(
@@ -59,6 +63,8 @@ public sealed class SemanasService : ISemanasService
     {
         try
         {
+            _logger.LogDebug("Query GetSemanasPendientes");
+
             var rows = await _repo.GetSemanasPendientesAsync(ct);
 
             var result = rows
@@ -66,6 +72,8 @@ public sealed class SemanasService : ISemanasService
                 .Where(d => d.GetValueOrDefault("wkname") is not null)
                 .Select(d => new SemanaPendienteItem(d["wkname"]!.ToString()!))
                 .ToList();
+
+            _logger.LogInformation("GetSemanasPendientes | resultados={Count}", result.Count);
 
             return ServiceResult<IReadOnlyList<SemanaPendienteItem>>.Ok(result);
         }

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Controllers;
+namespace ApiKiteo.API.Controllers;
 
 /// <summary>
 /// Autenticación — replica el endpoint Python /auth/login.

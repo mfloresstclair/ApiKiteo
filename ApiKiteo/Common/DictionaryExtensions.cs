@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Common;
+namespace ApiKiteo.API.Common;
 
 /// <summary>
 /// Extensiones para acceso seguro a filas dinámicas de Dapper.

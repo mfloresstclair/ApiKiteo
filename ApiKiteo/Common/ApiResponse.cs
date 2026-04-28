@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Common;
+namespace ApiKiteo.API.Common;
 
 /// <summary>
 /// Envuelve respuestas exitosas con paginación o totales.

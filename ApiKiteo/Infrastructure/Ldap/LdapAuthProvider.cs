@@ -1,8 +1,8 @@
 using System.DirectoryServices.AccountManagement;
 using Microsoft.Extensions.Options;
-using KiteoAdmin.API.Configuration;
+using ApiKiteo.API.Configuration;
 
-namespace KiteoAdmin.API.Infrastructure.Ldap;
+namespace ApiKiteo.API.Infrastructure.Ldap;
 
 /// <summary>
 /// Autenticación contra Active Directory usando PrincipalContext

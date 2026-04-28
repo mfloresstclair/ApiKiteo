@@ -1,11 +1,11 @@
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Infrastructure.Ldap;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Models.Responses;
-using KiteoAdmin.API.Repositories.Interfaces;
-using KiteoAdmin.API.Services.Interfaces;
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Infrastructure.Ldap;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Models.Responses;
+using ApiKiteo.API.Repositories.Interfaces;
+using ApiKiteo.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Services.Implementations;
+namespace ApiKiteo.API.Services.Implementations;
 
 /// <summary>
 /// Orquesta: LDAP auth → Kit_vin_User_Access → construir respuesta.

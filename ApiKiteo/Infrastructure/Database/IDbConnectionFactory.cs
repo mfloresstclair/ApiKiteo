@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace KiteoAdmin.API.Infrastructure.Database;
+namespace ApiKiteo.API.Infrastructure.Database;
 
 /// <summary>
 /// Abstracción de la fábrica de conexiones SQL.

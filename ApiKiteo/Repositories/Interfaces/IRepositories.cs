@@ -1,6 +1,6 @@
-using KiteoAdmin.API.Models.Responses;
+using ApiKiteo.API.Models.Responses;
 
-namespace KiteoAdmin.API.Repositories.Interfaces;
+namespace ApiKiteo.API.Repositories.Interfaces;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 

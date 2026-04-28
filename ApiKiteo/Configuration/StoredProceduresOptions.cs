@@ -1,4 +1,4 @@
-namespace KiteoAdmin.API.Configuration;
+namespace ApiKiteo.API.Configuration;
 
 /// <summary>
 /// Nombres de los Stored Procedures configurados en appsettings.json

@@ -4,9 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>KiteoAdmin.API</RootNamespace>
-    <AssemblyName>KiteoAdmin.API</AssemblyName>
-    <UserSecretsId>kiteo-admin-api-secrets</UserSecretsId>
+    <RootNamespace>ApiKiteo.API</RootNamespace>
+    <AssemblyName>ApiKiteo.API</AssemblyName>
+    <UserSecretsId>api-kiteo-api-secrets</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +24,12 @@
     <!-- User Secrets (desarrollo) -->
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets"
                       Version="8.0.0" />
+
+    <!-- Logging a archivo con rolling diario y auto-borrado -->
+    <PackageReference Include="Serilog.AspNetCore"            Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.File"            Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console"         Version="6.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="2.3.0" />
   </ItemGroup>
 
 </Project>

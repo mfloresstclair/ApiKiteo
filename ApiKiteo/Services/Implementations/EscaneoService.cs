@@ -1,11 +1,11 @@
+using ApiKiteo.API.Common;
+using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Models.Responses;
+using ApiKiteo.API.Repositories.Interfaces;
+using ApiKiteo.API.Services.Interfaces;
 using System.Text.Json;
-using KiteoAdmin.API.Common;
-using KiteoAdmin.API.Models.Requests;
-using KiteoAdmin.API.Models.Responses;
-using KiteoAdmin.API.Repositories.Interfaces;
-using KiteoAdmin.API.Services.Interfaces;
 
-namespace KiteoAdmin.API.Services.Implementations;
+namespace ApiKiteo.API.Services.Implementations;
 
 public sealed class EscaneoService : IEscaneoService
 {
@@ -14,7 +14,7 @@ public sealed class EscaneoService : IEscaneoService
 
     public EscaneoService(IEscaneoRepository repo, ILogger<EscaneoService> logger)
     {
-        _repo   = repo;
+        _repo = repo;
         _logger = logger;
     }
 
@@ -33,12 +33,12 @@ public sealed class EscaneoService : IEscaneoService
                 .Where(d => d.GetStr("vin") is not null)
                 .Select(d => new VinItem
                 {
-                    Vin   = d.GetStr("vin"),
-                    Loc   = d.GetValueOrDefault("Loc")
+                    Vin = d.GetStr("vin"),
+                    Loc = d.GetValueOrDefault("Loc")
                          ?? d.GetValueOrDefault("locacion")
                          ?? d.GetValueOrDefault("Locacion"),
                     Grupo = d.GetStr("Grupo") ?? d.GetStr("grupo"),
-                    Item  = d.GetStr("item")  ?? request.Item
+                    Item = d.GetStr("item") ?? request.Item
                 })
                 .ToList();
 
@@ -90,10 +90,10 @@ public sealed class EscaneoService : IEscaneoService
                 {
                     vines.Add(new VinItem
                     {
-                        Vin   = vin,
-                        Loc   = d.GetValueOrDefault("loc") ?? d.GetValueOrDefault("Locacion"),
+                        Vin = vin,
+                        Loc = d.GetValueOrDefault("loc") ?? d.GetValueOrDefault("Locacion"),
                         Grupo = d.GetStr("grupo") ?? d.GetStr("Grupo"),
-                        Item  = d.GetStr("item")  ?? request.Item
+                        Item = d.GetStr("item") ?? request.Item
                     });
                 }
             }
@@ -121,41 +121,57 @@ public sealed class EscaneoService : IEscaneoService
                 request.Wkname, request.Item, request.Cantidad, request.Empleado, ct);
 
             EscaneoEvento? evento = null;
-            var vines       = new List<VinItem>();
-            var gruposMap   = new Dictionary<string, Dictionary<string, object?>>();
+            var vines = new List<VinItem>();
+            var gruposMap = new Dictionary<string, Dictionary<string, object?>>();
+            decimal? weekPerc = null;
 
             foreach (var r in rows)
             {
                 var d = (IDictionary<string, object?>)r;
+                var tipo = d.GetStr("Tipo") ?? d.GetStr("tipo") ?? string.Empty;
 
-                // Fila de evento: tiene "mensaje" y no tiene "vin"
-                if (d.ContainsKey("mensaje") && evento is null)
+                // EvtData — resumen del evento
+                if (tipo.Equals("EvtData", StringComparison.OrdinalIgnoreCase) && evento is null)
                 {
                     evento = BuildEvento(d);
+                    continue;
                 }
 
-                var vin = d.GetStr("vin") ?? d.GetStr("Vin");
-                if (vin is not null)
+                // VinData — VINs actualizados
+                if (tipo.Equals("VinData", StringComparison.OrdinalIgnoreCase))
                 {
-                    vines.Add(new VinItem
-                    {
-                        Vin   = vin,
-                        Loc   = d.GetValueOrDefault("loc") ?? d.GetValueOrDefault("Loc"),
-                        Grupo = d.GetStr("grupo") ?? d.GetStr("Grupo"),
-                        Item  = request.Item
-                    });
+                    var vin = d.GetStr("vin") ?? d.GetStr("Vin");
+                    if (vin is not null)
+                        vines.Add(new VinItem
+                        {
+                            Vin = vin,
+                            Loc = d.GetValueOrDefault("loc") ?? d.GetValueOrDefault("Loc"),
+                            Grupo = d.GetStr("grupo") ?? d.GetStr("Grupo"),
+                            Item = request.Item
+                        });
+                    continue;
                 }
 
-                // Progreso por grupo — una sola entrada por grupo
-                var grupo      = d.GetStr("grupo") ?? d.GetStr("Grupo");
-                var porcentaje = d.GetValueOrDefault("Porcentaje") ?? d.GetValueOrDefault("porcentaje");
-                if (porcentaje is not null && grupo is not null && !gruposMap.ContainsKey(grupo))
+                // WeekPerc — porcentaje total de la semana para el item
+                if (tipo.Equals("WeekPerc", StringComparison.OrdinalIgnoreCase))
                 {
-                    gruposMap[grupo] = new Dictionary<string, object?>
+                    weekPerc = d.GetDecimal("Porcentaje") ?? d.GetDecimal("porcentaje");
+                    continue;
+                }
+
+                // GrpData — progreso por grupo
+                if (tipo.Equals("GrpData", StringComparison.OrdinalIgnoreCase))
+                {
+                    var grupo = d.GetStr("grupo") ?? d.GetStr("Grupo");
+                    var porcentaje = d.GetValueOrDefault("Porcentaje") ?? d.GetValueOrDefault("porcentaje");
+                    if (porcentaje is not null && grupo is not null && !gruposMap.ContainsKey(grupo))
                     {
-                        ["grupo"]      = grupo,
-                        ["Porcentaje"] = porcentaje.ToString()
-                    };
+                        gruposMap[grupo] = new Dictionary<string, object?>
+                        {
+                            ["grupo"] = grupo,
+                            ["Porcentaje"] = porcentaje.ToString()
+                        };
+                    }
                 }
             }
 
@@ -167,7 +183,8 @@ public sealed class EscaneoService : IEscaneoService
                     vines.Count,
                     evento,
                     vines,
-                    gruposMap.Values.ToList()));
+                    gruposMap.Values.ToList(),
+                    weekPerc));
         }
         catch (Exception ex)
         {
@@ -221,13 +238,13 @@ public sealed class EscaneoService : IEscaneoService
     private static EscaneoEvento BuildEvento(IDictionary<string, object?> d) =>
         new()
         {
-            Mensaje             = d.GetStr("mensaje"),
-            Actualizados        = d.GetInt("ajustados")   ?? d.GetInt("actualizados"),
-            Pendientes          = d.GetInt("disponibles_para_ajuste") ?? d.GetInt("pendientes"),
-            Requested           = d.GetInt("solicitado")  ?? d.GetInt("requested"),
-            TotalItem           = d.GetInt("total_item"),
-            Excedente           = d.GetInt("excedente"),
-            Faltante            = d.GetInt("faltante"),
+            Mensaje = d.GetStr("mensaje"),
+            Actualizados = d.GetInt("ajustados") ?? d.GetInt("actualizados"),
+            Pendientes = d.GetInt("disponibles_para_ajuste") ?? d.GetInt("pendientes"),
+            Requested = d.GetInt("solicitado") ?? d.GetInt("requested"),
+            TotalItem = d.GetInt("total_item"),
+            Excedente = d.GetInt("excedente"),
+            Faltante = d.GetInt("faltante"),
             LocacionesAjustadas = d.GetStr("locaciones_ajustadas")
         };
 }

@@ -1,10 +1,10 @@
 using Dapper;
 using Microsoft.Extensions.Options;
-using KiteoAdmin.API.Configuration;
-using KiteoAdmin.API.Infrastructure.Database;
-using KiteoAdmin.API.Repositories.Interfaces;
+using ApiKiteo.API.Configuration;
+using ApiKiteo.API.Infrastructure.Database;
+using ApiKiteo.API.Repositories.Interfaces;
 
-namespace KiteoAdmin.API.Repositories.Implementations;
+namespace ApiKiteo.API.Repositories.Implementations;
 
 public sealed class VinsRepository : IVinsRepository
 {

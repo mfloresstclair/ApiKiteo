@@ -1,4 +1,4 @@
-# KiteoAdmin API
+# ApiKiteo API
 
 Migración de KiteoApp Python (Flask + Waitress) v2.7 a ASP.NET Core 8.  
 API unificada para el sistema de kiteo industrial de línea de producción.
@@ -21,7 +21,7 @@ API unificada para el sistema de kiteo industrial de línea de producción.
 ## Estructura del proyecto
 
 ```
-KiteoAdmin.API/
+ApiKiteo.API/
 ├── Controllers/                       ← HTTP layer — thin, sin lógica de negocio
 │   ├── KiteoBaseController.cs         ← Base: FromResult<T>() — traduce ServiceResult → HTTP
 │   ├── AuthController.cs              ← POST /auth/login
@@ -70,7 +70,7 @@ KiteoAdmin.API/
 ├── appsettings.Development.json       ← Dev overrides: logs verbose, DatabaseOverride=DevTest
 ├── appsettings.Development.template.json ← Plantilla para nuevos devs (va al repo)
 ├── appsettings.Production.json        ← Prod overrides: logs Warning, URL 0.0.0.0:5000
-├── KiteoAdmin.API.csproj
+├── ApiKiteo.API.csproj
 └── Program.cs                         ← Composición DI + middleware pipeline
 ```
 
@@ -155,8 +155,8 @@ No requiere configurar host, puerto ni SSL.
 
 **1. Clonar el repositorio**
 ```bash
-git clone https://github.com/tu-org/KiteoAdmin.API.git
-cd KiteoAdmin.API
+git clone https://github.com/tu-org/ApiKiteo.API.git
+cd ApiKiteo.API
 ```
 
 **2. Crear el archivo de config local**
@@ -175,7 +175,7 @@ dotnet restore
 **4. Abrir el puerto en el firewall** *(una sola vez, como Administrador)*
 ```powershell
 netsh advfirewall firewall add rule `
-    name="KiteoAdmin Dev Puerto 5000" `
+    name="ApiKiteo Dev Puerto 5000" `
     dir=in action=allow protocol=TCP localport=5000
 ```
 
@@ -218,7 +218,7 @@ GET  http://TU_IP_LOCAL:5000/health    ← desde otra máquina de la red
 dotnet publish -c Release -r win-x64 --self-contained true -o C:\Temp\kiteo-publish
 ```
 
-O desde Visual Studio: `Build → Publish KiteoAdmin.API`
+O desde Visual Studio: `Build → Publish ApiKiteo.API`
 - Configuration: `Release`
 - Target Runtime: `win-x64`
 - Deployment Mode: `Self-Contained`
@@ -228,14 +228,14 @@ O desde Visual Studio: `Build → Publish KiteoAdmin.API`
 ### Paso 2 — Copiar al servidor
 
 ```
-C:\Temp\kiteo-publish\  →  C:\Apps\KiteoAdmin\  (en el servidor de producción)
+C:\Temp\kiteo-publish\  →  C:\Apps\ApiKiteo\  (en el servidor de producción)
 ```
 
 Contenido que debe quedar en el servidor:
 ```
-C:\Apps\KiteoAdmin\
-├── KiteoAdmin.API.exe
-├── KiteoAdmin.API.dll
+C:\Apps\ApiKiteo\
+├── ApiKiteo.API.exe
+├── ApiKiteo.API.dll
 ├── appsettings.json              ← SPs + LdapOptions + DatabaseOverride=""
 ├── appsettings.Production.json   ← logs Warning + URL 0.0.0.0:5000
 └── [dlls de runtime...]
@@ -258,25 +258,25 @@ C:\Apps\KiteoAdmin\
 ### Paso 4 — Instalar como Windows Service
 
 ```powershell
-sc create KiteoAdminAPI `
-    binPath= "C:\Apps\KiteoAdmin\KiteoAdmin.API.exe" `
-    DisplayName= "KiteoAdmin API" `
+sc create ApiKiteoAPI `
+    binPath= "C:\Apps\ApiKiteo\ApiKiteo.API.exe" `
+    DisplayName= "ApiKiteo API" `
     start= auto
 
-sc description KiteoAdminAPI "API de kiteo industrial - KiteoApp v2.7 + KiteoAdmin v3.0"
+sc description ApiKiteoAPI "API de kiteo industrial - KiteoApp v2.7 + ApiKiteo v3.0"
 
-sc start KiteoAdminAPI
+sc start ApiKiteoAPI
 
-sc query KiteoAdminAPI
+sc query ApiKiteoAPI
 # STATE : 4  RUNNING  ← debe decir esto
 ```
 
 > **Windows Auth con SQL Server:** si el servicio corre como `LocalSystem`
 > y no tiene acceso al SQL, cambiar la cuenta:
 > ```powershell
-> sc create KiteoAdminAPI `
->     binPath= "C:\Apps\KiteoAdmin\KiteoAdmin.API.exe" `
->     DisplayName= "KiteoAdmin API" `
+> sc create ApiKiteoAPI `
+>     binPath= "C:\Apps\ApiKiteo\ApiKiteo.API.exe" `
+>     DisplayName= "ApiKiteo API" `
 >     start= auto `
 >     obj= "STCLAIRTECH\cuenta_servicio" `
 >     password= "password_cuenta"
@@ -286,7 +286,7 @@ sc query KiteoAdminAPI
 
 ```powershell
 netsh advfirewall firewall add rule `
-    name="KiteoAdmin API Puerto 5000" `
+    name="ApiKiteo API Puerto 5000" `
     dir=in action=allow protocol=TCP localport=5000
 ```
 
@@ -316,13 +316,13 @@ Swagger **no está disponible** en producción.
 dotnet publish -c Release -r win-x64 --self-contained true -o C:\Temp\kiteo-publish
 
 # 2. En el servidor — detener el servicio
-sc stop KiteoAdminAPI
+sc stop ApiKiteoAPI
 
 # 3. Copiar nuevos archivos
-Copy-Item "\\TU_MAQUINA\kiteo-publish\*" "C:\Apps\KiteoAdmin\" -Recurse -Force
+Copy-Item "\\TU_MAQUINA\kiteo-publish\*" "C:\Apps\ApiKiteo\" -Recurse -Force
 
 # 4. Iniciar el servicio
-sc start KiteoAdminAPI
+sc start ApiKiteoAPI
 
 # 5. Verificar
 Invoke-WebRequest http://localhost:5000/health
@@ -396,7 +396,7 @@ bin/ obj/ .vs/ *.user
 - [ ] `DatabaseOverride` vacío en `appsettings.json` (conecta a `BOS`)
 - [ ] La cuenta del servicio tiene acceso a `SMXSQL01\SMX_PROD\BOS`
 - [ ] Puerto 5000 abierto en firewall
-- [ ] `sc query KiteoAdminAPI` → `STATE: 4 RUNNING`
+- [ ] `sc query ApiKiteoAPI` → `STATE: 4 RUNNING`
 - [ ] `GET http://localhost:5000/health` → `{ "status": "OK" }`
 - [ ] `POST /auth/login` con credenciales reales → `{ "ok": true }`
 - [ ] Cliente WPF apunta a `http://IP_SERVIDOR:5000`
