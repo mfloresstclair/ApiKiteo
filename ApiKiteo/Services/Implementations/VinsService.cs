@@ -128,6 +128,7 @@ public sealed class VinsService : IVinsService
                 {
                     Locacion = d.GetInt("Locacion") ?? d.GetInt("locacion"),
                     Vin = d.GetStr("Vin") ?? d.GetStr("vin"),
+                    Vindesc = NormalizeVindesc(d.GetStr("vinDesc")),
                     Porcentaje = d.GetDecimal("Porcentaje") ?? 0m
                 })
                 .ToList();
