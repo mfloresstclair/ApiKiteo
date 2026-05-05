@@ -64,3 +64,15 @@ public sealed record AprobarSemanaRequest(
     [Required] string Wkname,
     [Required] string AprobadoPor
 );
+
+/// <summary>POST /escanear_bulk — uso temporal para carga masiva</summary>
+public sealed record EscanearBulkRequest(
+    [Required] string Wkname,
+    [Required] string Empleado,
+    [Required] List<EscanearBulkItem> Items
+);
+
+public sealed record EscanearBulkItem(
+    [Required] string Item,
+    [Required] int Cantidad
+);

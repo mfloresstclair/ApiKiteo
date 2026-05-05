@@ -89,6 +89,7 @@ public sealed record SemanaVinStatusItem
 {
     public int? Locacion { get; init; }
     public string? Vin { get; init; }
+    public string? Vindesc { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
     public decimal Porcentaje { get; init; }
 }
 
@@ -169,4 +170,22 @@ public sealed record SemanaVinesEntregaResponse(
 public sealed record AprobarSemanaResponse(
     bool Ok,
     string Mensaje
+);
+
+public sealed record EscanearBulkResponse(
+    bool Ok,
+    string Wkname,
+    int Total,
+    int Exitosos,
+    int Fallidos,
+    IReadOnlyList<EscanearBulkItemResult> Resultados
+);
+
+public sealed record EscanearBulkItemResult(
+    string Item,
+    int Cantidad,
+    bool Ok,
+    string? Mensaje,
+    int? Actualizados,
+    int? Pendientes
 );
