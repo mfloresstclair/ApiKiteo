@@ -72,3 +72,21 @@ public interface IAdminService
     Task<ServiceResult<AprobarSemanaResponse>> AprobarSemanaAsync(
         AprobarSemanaRequest request, CancellationToken ct = default);
 }
+
+// ─── Admin — Roles ────────────────────────────────────────────────────────────
+
+public interface IAdminRolesService
+{
+    Task<ServiceResult<RolesListResponse>> GetRolesAsync(
+        string site, string access, bool includeInactive,
+        CancellationToken ct = default);
+
+    Task<ServiceResult<RoleAddResponse>> AddRoleAsync(
+        RoleAddRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<RoleRemoveResponse>> RemoveRoleAsync(
+        int idNum, string removedBy, CancellationToken ct = default);
+
+    Task<ServiceResult<RoleUpdateResponse>> UpdateRoleAsync(
+        int idNum, RoleUpdateRequest request, CancellationToken ct = default);
+}

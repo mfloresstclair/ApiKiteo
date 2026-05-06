@@ -76,3 +76,41 @@ public interface IAdminRepository
     Task<IEnumerable<dynamic>> AprobarSemanaAsync(
         string wkname, string aprobadoPor, CancellationToken ct = default);
 }
+
+// ─── Admin — Roles ────────────────────────────────────────────────────────────
+
+public interface IAdminRolesRepository
+{
+    /// <summary>
+    /// Llama Kit_vin_admin_roles_list.
+    /// Devuelve el resultset completo de Central_Access para KiteoApp.
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetRolesAsync(
+        string site, string access, bool includeInactive,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Llama Kit_vin_admin_role_add.
+    /// Devuelve un rowset con http_status / code / message + datos del nuevo registro.
+    /// </summary>
+    Task<IEnumerable<dynamic>> AddRoleAsync(
+        string username, string fullName, string access,
+        string site, string createdBy,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Llama Kit_vin_admin_role_remove.
+    /// Devuelve un rowset con http_status / code / message.
+    /// </summary>
+    Task<IEnumerable<dynamic>> RemoveRoleAsync(
+        int idNum, string removedBy,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Llama Kit_vin_admin_role_update.
+    /// Devuelve un rowset con http_status / code / message + access anterior/nuevo.
+    /// </summary>
+    Task<IEnumerable<dynamic>> UpdateRoleAsync(
+        int idNum, string access, string updatedBy,
+        CancellationToken ct = default);
+}

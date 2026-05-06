@@ -32,4 +32,10 @@ public sealed class StoredProceduresOptions
 
     // ── Admin ─────────────────────────────────────────────────────────────────
     public string AprobarSemana        { get; init; } = string.Empty;
+
+    // ── Admin — Roles ─────────────────────────────────────────────────────────
+    public string GetAdminRolesList { get; init; } = string.Empty;
+    public string AdminRoleAdd { get; init; } = string.Empty;
+    public string AdminRoleRemove { get; init; } = string.Empty;
+    public string AdminRoleUpdate { get; init; } = string.Empty;
 }

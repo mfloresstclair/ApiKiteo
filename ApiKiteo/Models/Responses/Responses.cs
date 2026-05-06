@@ -189,3 +189,62 @@ public sealed record EscanearBulkItemResult(
     int? Actualizados,
     int? Pendientes
 );
+// ─── Admin — Roles ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Fila devuelta por Kit_vin_admin_roles_list.
+/// Mapea directamente desde Central_Access.
+/// </summary>
+public sealed record RoleItem
+{
+    public int IdNum { get; init; }
+    public string UserName { get; init; } = string.Empty;
+    public string FullName { get; init; } = string.Empty;
+    public string Access { get; init; } = string.Empty;
+    public string Site { get; init; } = string.Empty;
+    public int Estatus { get; init; }
+    public string? CreatedAt { get; init; }
+    public string? LastUpdated { get; init; }
+}
+
+public sealed record RolesListResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<RoleItem> Resultados
+);
+
+/// <summary>
+/// Respuesta de Kit_vin_admin_role_add cuando http_status = 200.
+/// </summary>
+public sealed record RoleAddResponse(
+    bool Ok,
+    string Mensaje,
+    int IdNum,
+    string Username,
+    string FullName,
+    string Access,
+    string Site
+);
+
+/// <summary>
+/// Respuesta de Kit_vin_admin_role_remove cuando http_status = 200.
+/// </summary>
+public sealed record RoleRemoveResponse(
+    bool Ok,
+    string Mensaje,
+    int IdNum,
+    string Username,
+    string Access
+);
+
+/// <summary>
+/// Respuesta de Kit_vin_admin_role_update cuando http_status = 200.
+/// </summary>
+public sealed record RoleUpdateResponse(
+    bool Ok,
+    string Mensaje,
+    int IdNum,
+    string Username,
+    string AccessAnterior,
+    string AccessNuevo
+);

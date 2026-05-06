@@ -76,3 +76,25 @@ public sealed record EscanearBulkItem(
     [Required] string Item,
     [Required] int Cantidad
 );
+
+// ─── Admin — Roles ────────────────────────────────────────────────────────────
+
+/// <summary>POST /api/roles</summary>
+public sealed record RoleAddRequest(
+    [Required] string Username,
+    [Required] string FullName,
+    [Required] string Access,   // LPaccess | FAaccess | IPaccess | SCHaccess
+    [Required] string Site,
+    [Required] string CreatedBy
+);
+
+/// <summary>DELETE /api/roles/{id}</summary>
+public sealed record RoleRemoveRequest(
+    [Required] string RemovedBy
+);
+
+/// <summary>PUT /api/roles/{id}</summary>
+public sealed record RoleUpdateRequest(
+    [Required] string Access,   // LPaccess | FAaccess | IPaccess | SCHaccess
+    [Required] string UpdatedBy
+);

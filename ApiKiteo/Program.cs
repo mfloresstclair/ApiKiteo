@@ -52,6 +52,7 @@ builder.Services.AddScoped<IEmpleadosRepository, EmpleadosRepository>();
 builder.Services.AddScoped<IVinsRepository, VinsRepository>();
 builder.Services.AddScoped<IEscaneoRepository, EscaneoRepository>();
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IAdminRolesRepository, AdminRolesRepository>();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -60,6 +61,7 @@ builder.Services.AddScoped<IEmpleadosService, EmpleadosService>();
 builder.Services.AddScoped<IVinsService, VinsService>();
 builder.Services.AddScoped<IEscaneoService, EscaneoService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IAdminRolesService, AdminRolesService>();
 
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
