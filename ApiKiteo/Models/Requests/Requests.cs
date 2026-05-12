@@ -98,3 +98,22 @@ public sealed record RoleUpdateRequest(
     [Required] string Access,   // LPaccess | FAaccess | IPaccess | SCHaccess
     [Required] string UpdatedBy
 );
+
+
+// ─── MandarFinal ──────────────────────────────────────────────────────────────
+
+
+/// POST /mandar_final/add
+/// sitio opcional — si viene, el SP valida items contra CNDetalle
+/// usando el lunes de producción calculado internamente.
+public sealed record MandarFinalAddRequest(
+    [Required] List<string> Items,
+    [Required] string Usuario,
+    string? Sitio
+);
+
+/// POST /mandar_final/remove
+public sealed record MandarFinalRemoveRequest(
+    [Required] List<string> Items,
+    [Required] string Usuario
+);

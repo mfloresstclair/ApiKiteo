@@ -90,3 +90,41 @@ public interface IAdminRolesService
     Task<ServiceResult<RoleUpdateResponse>> UpdateRoleAsync(
         int idNum, RoleUpdateRequest request, CancellationToken ct = default);
 }
+// ─── MandarFinal ──────────────────────────────────────────────────────────────
+
+public interface IMandarFinalService
+{
+
+
+    /// TOP 20 ParentItems de CNDetalle para la semana en curso.
+    /// search es opcional — filtra por coincidencia parcial en ParentItem.
+
+    Task<ServiceResult<MandarFinalParentsResponse>> GetParentsAsync(
+        string sitio, string? search, CancellationToken ct = default);
+
+
+    /// Items hijo de un ParentItem para la semana en curso,
+    /// con overlay y flag de presencia en la lista de mandar_a_final.
+
+    Task<ServiceResult<MandarFinalPorParentResponse>> GetPorParentAsync(
+        string sitio, string parentItem, CancellationToken ct = default);
+
+
+    /// Items registrados en mandar_a_final, filtrados o no por Estatus = 1.
+
+    Task<ServiceResult<MandarFinalListResponse>> GetListAsync(
+        bool includeInactive, CancellationToken ct = default);
+
+
+    /// Agrega o reactiva items en la lista de mandar_a_final.
+    /// Si viene sitio, el SP valida contra CNDetalle con el lunes calculado.
+
+    Task<ServiceResult<MandarFinalAddResponse>> AddItemsAsync(
+        MandarFinalAddRequest request, CancellationToken ct = default);
+
+
+    /// Soft-delete de items (Estatus = 0) en la lista de mandar_a_final.
+
+    Task<ServiceResult<MandarFinalRemoveResponse>> RemoveItemsAsync(
+        MandarFinalRemoveRequest request, CancellationToken ct = default);
+}

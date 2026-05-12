@@ -2,19 +2,19 @@ namespace ApiKiteo.API.Models.Responses;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-/// <summary>
+
 /// Respuesta de /auth/login.
 /// Contrato fijo con KiteoApp WPF — no cambiar nombres de propiedades.
-/// </summary>
+
 public sealed record AuthLoginResponse(
     bool   Ok,
     string Username,
     string Access           // "LPaccess" | "FAaccess"
 );
 
-/// <summary>
+
 /// Row interno devuelto por Kit_vin_User_Access.
-/// </summary>
+
 public sealed record UserAccessRow
 {
     public string? Access { get; init; }
@@ -120,9 +120,9 @@ public sealed record VinToAdjustResponse(
 
 // ─── Escaneo — escanear / escanear_ajuste ─────────────────────────────────────
 
-/// <summary>
+
 /// Fila de evento devuelta por el SP con Tipo = "EvtData".
-/// </summary>
+
 public sealed record EscaneoEvento
 {
     public string? Mensaje { get; init; }
@@ -191,10 +191,10 @@ public sealed record EscanearBulkItemResult(
 );
 // ─── Admin — Roles ────────────────────────────────────────────────────────────
 
-/// <summary>
+
 /// Fila devuelta por Kit_vin_admin_roles_list.
 /// Mapea directamente desde Central_Access.
-/// </summary>
+
 public sealed record RoleItem
 {
     public int IdNum { get; init; }
@@ -213,9 +213,9 @@ public sealed record RolesListResponse(
     IReadOnlyList<RoleItem> Resultados
 );
 
-/// <summary>
+
 /// Respuesta de Kit_vin_admin_role_add cuando http_status = 200.
-/// </summary>
+
 public sealed record RoleAddResponse(
     bool Ok,
     string Mensaje,
@@ -226,9 +226,9 @@ public sealed record RoleAddResponse(
     string Site
 );
 
-/// <summary>
+
 /// Respuesta de Kit_vin_admin_role_remove cuando http_status = 200.
-/// </summary>
+
 public sealed record RoleRemoveResponse(
     bool Ok,
     string Mensaje,
@@ -237,9 +237,9 @@ public sealed record RoleRemoveResponse(
     string Access
 );
 
-/// <summary>
+
 /// Respuesta de Kit_vin_admin_role_update cuando http_status = 200.
-/// </summary>
+
 public sealed record RoleUpdateResponse(
     bool Ok,
     string Mensaje,
@@ -247,4 +247,128 @@ public sealed record RoleUpdateResponse(
     string Username,
     string AccessAnterior,
     string AccessNuevo
+);
+
+// ─── MandarFinal — candidatos ─────────────────────────────────────────────────
+
+
+
+/// Fila devuelta por Kit_vin_mandar_final_candidatos.
+/// El SP hace UNION ALL de dos fuentes:
+///   - Fuente "CNDetalle"   : items de la semana actual para el sitio dado.
+///   - Fuente "MandarFinal" : items activos en la lista que ya no están en CNDetalle esta semana.
+
+public sealed record MandarFinalCandidatoItem
+{
+    public string ParentItem { get; init; } = string.Empty;
+    public string Item { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string? Circuits { get; init; }
+    public string? Splices { get; init; }
+    public string? Twists { get; init; }
+    public string? FechaSemana { get; init; }   // lunes calculado por el SP (yyyy-MM-dd)
+    public bool YaEnLista { get; init; }
+    public string? AgregadoPor { get; init; }
+    public string? FechaAgregado { get; init; }   // DateTime → string ISO
+    public string? Origen { get; init; }   // "CNDetalle" | "MandarFinal"
+}
+
+
+// ─── MandarFinal — parents ────────────────────────────────────────────────────
+
+
+/// Fila devuelta por Kit_vin_mandar_final_parents.
+/// TOP 20 ParentItems de CNDetalle para la semana en curso.
+
+public sealed record MandarFinalParentItem
+{
+    public string ParentItem { get; init; } = string.Empty;
+    public int TotalCircuitos { get; init; }
+    public bool TieneActivosEnLista { get; init; }
+    public string? FechaSemana { get; init; }   // lunes calculado (yyyy-MM-dd)
+}
+
+public sealed record MandarFinalParentsResponse(
+    bool Ok,
+    string Sitio,
+    string? Search,
+    int Total,
+    IReadOnlyList<MandarFinalParentItem> Resultados
+);
+
+// ─── MandarFinal — por_parent ─────────────────────────────────────────────────
+
+
+/// Fila devuelta por Kit_vin_mandar_final_por_parent.
+/// Items hijo de un ParentItem con datos de circuito y flag de lista.
+
+public sealed record MandarFinalPorParentItem
+{
+    public string ParentItem { get; init; } = string.Empty;
+    public string Item { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string? Circuits { get; init; }
+    public string? Splices { get; init; }
+    public string? Twists { get; init; }
+    public string? Overlay { get; init; }   // overlay real desde VinBusiness_DB_macro
+    public string? FechaSemana { get; init; }   // lunes calculado (yyyy-MM-dd)
+    public bool YaEnLista { get; init; }
+    public string? AgregadoPor { get; init; }
+    public string? FechaAgregado { get; init; }   // DateTime → string ISO
+}
+
+public sealed record MandarFinalPorParentResponse(
+    bool Ok,
+    string Sitio,
+    string ParentItem,
+    int Total,
+    IReadOnlyList<MandarFinalPorParentItem> Resultados
+);
+
+// ─── MandarFinal — list ───────────────────────────────────────────────────────
+
+
+/// Fila devuelta por Kit_vin_mandar_final_list.
+
+public sealed record MandarFinalListItem
+{
+    public int Id { get; init; }
+    public string Item { get; init; } = string.Empty;
+    public string? Usuario { get; init; }
+    public string? Recorddate { get; init; }   // DateTime → string ISO
+    public int Estatus { get; init; }
+}
+
+public sealed record MandarFinalListResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<MandarFinalListItem> Resultados
+);
+
+// ─── MandarFinal — add ────────────────────────────────────────────────────────
+
+
+/// Respuesta de Kit_vin_mandar_final_add.
+/// ya_activos y fecha_semana eliminados — el SP ya no los devuelve.
+
+public sealed record MandarFinalAddResponse(
+    bool Ok,
+    string Mensaje,
+    int Solicitados,
+    int Insertados,
+    int Reactivados
+);
+
+// ─── MandarFinal — remove ─────────────────────────────────────────────────────
+
+
+/// Respuesta de Kit_vin_mandar_final_remove.
+/// Columna renombrada: no_encontrados_o_ya_inactivos → no_encontrados.
+
+public sealed record MandarFinalRemoveResponse(
+    bool Ok,
+    string Mensaje,
+    int Solicitados,
+    int Removidos,
+    int NoEncontrados
 );

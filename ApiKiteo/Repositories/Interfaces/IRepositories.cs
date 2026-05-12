@@ -6,9 +6,9 @@ namespace ApiKiteo.API.Repositories.Interfaces;
 
 public interface IAuthRepository
 {
-    /// <summary>
+
     /// Ejecuta Kit_vin_User_Access y devuelve los permisos del usuario.
-    /// </summary>
+  
     Task<IEnumerable<UserAccessRow>> GetUserAccessAsync(
         string username, CancellationToken ct = default);
 }
@@ -81,36 +81,85 @@ public interface IAdminRepository
 
 public interface IAdminRolesRepository
 {
-    /// <summary>
+
     /// Llama Kit_vin_admin_roles_list.
     /// Devuelve el resultset completo de Central_Access para KiteoApp.
-    /// </summary>
+  
     Task<IEnumerable<dynamic>> GetRolesAsync(
         string site, string access, bool includeInactive,
         CancellationToken ct = default);
 
-    /// <summary>
+
     /// Llama Kit_vin_admin_role_add.
     /// Devuelve un rowset con http_status / code / message + datos del nuevo registro.
-    /// </summary>
+  
     Task<IEnumerable<dynamic>> AddRoleAsync(
         string username, string fullName, string access,
         string site, string createdBy,
         CancellationToken ct = default);
 
-    /// <summary>
+  
     /// Llama Kit_vin_admin_role_remove.
     /// Devuelve un rowset con http_status / code / message.
-    /// </summary>
+  
     Task<IEnumerable<dynamic>> RemoveRoleAsync(
         int idNum, string removedBy,
         CancellationToken ct = default);
 
-    /// <summary>
+  
     /// Llama Kit_vin_admin_role_update.
     /// Devuelve un rowset con http_status / code / message + access anterior/nuevo.
-    /// </summary>
+  
     Task<IEnumerable<dynamic>> UpdateRoleAsync(
         int idNum, string access, string updatedBy,
         CancellationToken ct = default);
+}
+
+// ─── MandarFinal ──────────────────────────────────────────────────────────────
+
+
+public interface IMandarFinalRepository
+{
+
+
+
+
+    /// Devuelve TOP 20 ParentItems de CNDetalle para la semana en curso,
+    /// opcionalmente filtrados por búsqueda parcial.
+    /// Ejecuta: Kit_vin_mandar_final_parents
+  
+    Task<IEnumerable<dynamic>> GetParentsAsync(
+        string sitio, string search, CancellationToken ct = default);
+
+
+    /// Devuelve los items hijo de un ParentItem para la semana en curso,
+    /// con overlay y flag de presencia en la lista de mandar_a_final.
+    /// Ejecuta: Kit_vin_mandar_final_por_parent
+  
+    Task<IEnumerable<dynamic>> GetPorParentAsync(
+        string sitio, string parentItem, CancellationToken ct = default);
+
+
+    /// Devuelve todos los items registrados en VinBusiness_DB_macro_Mandar_a_final.
+    /// Ejecuta: Kit_vin_mandar_final_list
+  
+    Task<IEnumerable<dynamic>> GetListAsync(
+        bool includeInactive, CancellationToken ct = default);
+
+
+    /// Agrega o reactiva items en VinBusiness_DB_macro_Mandar_a_final.
+    /// El SP espera @jsonItems = {"items":["ITEM1","ITEM2"]}.
+    /// Ejecuta: Kit_vin_mandar_final_add
+  
+    Task<IEnumerable<dynamic>> AddItemsAsync(
+        string jsonItems, string usuario, string sitio,
+        CancellationToken ct = default);
+
+
+    /// Soft-delete (Estatus = 0) de items en VinBusiness_DB_macro_Mandar_a_final.
+    /// El SP espera @jsonItems = {"items":["ITEM1","ITEM2"]}.
+    /// Ejecuta: Kit_vin_mandar_final_remove
+  
+    Task<IEnumerable<dynamic>> RemoveItemsAsync(
+        string jsonItems, string usuario, CancellationToken ct = default);
 }

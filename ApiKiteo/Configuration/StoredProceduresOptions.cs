@@ -38,4 +38,10 @@ public sealed class StoredProceduresOptions
     public string AdminRoleAdd { get; init; } = string.Empty;
     public string AdminRoleRemove { get; init; } = string.Empty;
     public string AdminRoleUpdate { get; init; } = string.Empty;
+    // ── MandarFinal ────────────────────────────────────────────────────────────
+    public string MandarFinalList { get; init; } = string.Empty;
+    public string MandarFinalAdd { get; init; } = string.Empty;
+    public string MandarFinalRemove { get; init; } = string.Empty;
+    public string MandarFinalParents { get; init; } = string.Empty;
+    public string MandarFinalPorParent { get; init; } = string.Empty;
 }
