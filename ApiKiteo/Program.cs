@@ -1,12 +1,12 @@
-using Microsoft.OpenApi.Models;
-using Serilog;
 using ApiKiteo.API.Configuration;
 using ApiKiteo.API.Infrastructure.Database;
 using ApiKiteo.API.Infrastructure.Ldap;
-using ApiKiteo.API.Repositories.Interfaces;
 using ApiKiteo.API.Repositories.Implementations;
-using ApiKiteo.API.Services.Interfaces;
+using ApiKiteo.API.Repositories.Interfaces;
 using ApiKiteo.API.Services.Implementations;
+using ApiKiteo.API.Services.Interfaces;
+using Microsoft.OpenApi.Models;
+using Serilog;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ApiKiteo API  —  ASP.NET Core 8
@@ -54,6 +54,7 @@ builder.Services.AddScoped<IEscaneoRepository, EscaneoRepository>();
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IAdminRolesRepository, AdminRolesRepository>();
 builder.Services.AddScoped<IMandarFinalRepository, MandarFinalRepository>();
+builder.Services.AddScoped<IWksRepository, WksRepository>();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -64,6 +65,7 @@ builder.Services.AddScoped<IEscaneoService, EscaneoService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAdminRolesService, AdminRolesService>();
 builder.Services.AddScoped<IMandarFinalService, MandarFinalService>();
+builder.Services.AddScoped<IWksService, WksService>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()

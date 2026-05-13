@@ -372,3 +372,40 @@ public sealed record MandarFinalRemoveResponse(
     int Removidos,
     int NoEncontrados
 );
+
+// ─── Wks — status board ───────────────────────────────────────────────────────
+
+/// <summary>
+/// Fila devuelta por kit_vin_wks_status_board.
+/// Un wkname con tipo compuesto (ZC/ZD) produce 2 filas — una por tipo.
+/// Los nombres de columna respetan exactamente los del SP para evitar confusión.
+/// </summary>
+public sealed record WksStatusBoardRow
+{
+    /// <summary>Semana de producción. Ejemplo: "wk20", "wk21".</summary>
+    public string Wk { get; init; } = string.Empty;
+
+    /// <summary>Tipo de circuito. Ejemplo: "CEA", "ZC", "ZD", "C2", "BodyT3".</summary>
+    public string Tipo { get; init; } = string.Empty;
+
+    /// <summary>Cantidad de VINs programados para esta semana/tipo.</summary>
+    public int VinCant { get; init; }
+
+    /// <summary>Kits completos kiteados pero aún NO entregados.</summary>
+    public int KitsComp { get; init; }
+
+    /// <summary>Kits completos kiteados Y entregados.</summary>
+    public int KitCompFinal { get; init; }
+
+    /// <summary>KitsComp + KitCompFinal.</summary>
+    public int KitsCompTot { get; init; }
+
+    /// <summary>Porcentaje de VINs escaneados (0–100). Dos decimales.</summary>
+    public decimal Porc { get; init; }
+}
+
+public sealed record WksStatusBoardResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<WksStatusBoardRow> Resultados
+);

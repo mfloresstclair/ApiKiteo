@@ -98,7 +98,27 @@ public sealed class VinsService : IVinsService
             // Resultado genérico — columnas varían según det
             var resultados = rows
                 .Select(r => (IDictionary<string, object?>)r)
-                .Select(d => d.ToDictionary(k => k.Key, v => v.Value))
+                .Select(d =>
+                {
+                    var dict = d.ToDictionary(k => k.Key, v => v.Value);
+
+                    var key = dict.Keys.FirstOrDefault(k =>
+                        k.Equals("locacion", StringComparison.OrdinalIgnoreCase));
+
+                    if (key is not null && dict[key] is not null)
+                    {
+                        var loc = Convert.ToInt32(dict[key]);
+
+                        dict[key] = det switch
+                        {
+                            "1" => loc == 0 ? "MANDAR A FINAL" : (object?)loc,  // detalle: número o MANDAR A FINAL
+                            "0" => loc == 0 ? "MANDAR A FINAL" : null,           // resumen: MANDAR A FINAL o null
+                            _ => loc == 0 ? "MANDAR A FINAL" : (object?)loc    // default: igual que det=1
+                        };
+                    }
+
+                    return dict;
+                })
                 .ToList();
 
             return ServiceResult<SemanaGrpFaltantesResponse>.Ok(

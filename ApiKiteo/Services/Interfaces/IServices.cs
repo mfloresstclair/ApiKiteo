@@ -128,3 +128,17 @@ public interface IMandarFinalService
     Task<ServiceResult<MandarFinalRemoveResponse>> RemoveItemsAsync(
         MandarFinalRemoveRequest request, CancellationToken ct = default);
 }
+
+
+// ─── Wks ──────────────────────────────────────────────────────────────────────
+
+public interface IWksService
+{
+    /// <summary>
+    /// Devuelve el estado de kits (porcentaje, completos, entregados) por semana y tipo
+    /// para la lista de wknames recibida.
+    /// Tipos compuestos (ZC/ZD) se expanden en filas separadas por el SP.
+    /// </summary>
+    Task<ServiceResult<WksStatusBoardResponse>> GetStatusBoardAsync(
+        WksStatusBoardRequest request, CancellationToken ct = default);
+}

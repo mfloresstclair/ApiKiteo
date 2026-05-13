@@ -117,3 +117,15 @@ public sealed record MandarFinalRemoveRequest(
     [Required] List<string> Items,
     [Required] string Usuario
 );
+
+// ─── Wks ──────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// POST /wks/status_board
+/// El SP espera {"wkname": ["wk20_108_CEA", "wk20_111_ZC/ZD", ...]}.
+/// Cada wkname tiene formato: {semana}_{vinCant}_{tipo}.
+/// Un wkname con tipo compuesto (ZC/ZD) se expande internamente en 2 filas por el SP.
+/// </summary>
+public sealed record WksStatusBoardRequest(
+    [Required][MinLength(1)] List<string> Wknames
+);

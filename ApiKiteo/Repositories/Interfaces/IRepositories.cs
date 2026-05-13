@@ -163,3 +163,15 @@ public interface IMandarFinalRepository
     Task<IEnumerable<dynamic>> RemoveItemsAsync(
         string jsonItems, string usuario, CancellationToken ct = default);
 }
+
+public interface IWksRepository
+{
+    /// <summary>
+    /// Obtiene el estado de kits por semana y tipo para una lista de wknames.
+    /// El SP expande internamente wknames con tipo compuesto (ZC/ZD) en filas separadas.
+    /// El SP espera @jsonWkname = {"wkname": ["wk20_108_CEA", ...]}.
+    /// Ejecuta: kit_vin_wks_status_board
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetStatusBoardAsync(
+        string jsonWkname, CancellationToken ct = default);
+}

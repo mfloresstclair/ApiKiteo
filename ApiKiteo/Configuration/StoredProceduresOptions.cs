@@ -44,4 +44,6 @@ public sealed class StoredProceduresOptions
     public string MandarFinalRemove { get; init; } = string.Empty;
     public string MandarFinalParents { get; init; } = string.Empty;
     public string MandarFinalPorParent { get; init; } = string.Empty;
+    // ── Wks ────────────────────────────────────────────────────────────────────
+    public string WksStatusBoard { get; init; } = string.Empty;
 }
