@@ -59,4 +59,39 @@ public sealed class AdminSemanasController : KiteoBaseController
 
         return FromResult(await _service.PreviewSemanaAsync(wkname.Trim(), ct));
     }
+
+    /// <summary>
+    /// Crea los registros de VinBusiness_DB_macro para una semana de producción.
+    /// Verifica que la semana exista en Vines y que no haya sido creada ya.
+    /// Si wknamerename viene informado, el wkname se renombra después de insertar.
+    /// </summary>
+    /// <remarks>
+    /// Ejemplo mínimo:
+    /// ```json
+    /// { "wkname": "wk22_196_CEA" }
+    /// ```
+    /// Con renombre:
+    /// ```json
+    /// { "wkname": "wk22_196_CEA", "wknamerename": "wk22_196_CEA_v2" }
+    /// ```
+    /// </remarks>
+    [HttpPost("crear")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CrearDb(
+        [FromBody] CrearDbRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'wkname' es requerido.",
+                ErrorCodes.Admin400));
+
+        return FromResult(await _service.CrearDbAsync(request, ct));
+    }
 }
