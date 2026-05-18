@@ -64,8 +64,9 @@ public sealed class AdminRepository : IAdminRepository
 
         return (resumen, detalle);
     }
+
     public async Task<bool> WkNameExistsInMacroAsync(
-       string wkname, CancellationToken ct = default)
+        string wkname, CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
 
@@ -80,9 +81,9 @@ public sealed class AdminRepository : IAdminRepository
         return count > 0;
     }
 
-    /// <inheritdoc/>
     public async Task<(IEnumerable<dynamic> Metadata, IEnumerable<dynamic> Registros)>
-        CrearDbAsync(string wkname, string? wknamerename, CancellationToken ct = default)
+        CrearDbAsync(string wkname, string? wknamerename, string? usuario,
+            CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
 
@@ -95,7 +96,8 @@ public sealed class AdminRepository : IAdminRepository
             new
             {
                 wkname,
-                wknamerename = string.IsNullOrWhiteSpace(wknamerename) ? null : wknamerename
+                wknamerename = string.IsNullOrWhiteSpace(wknamerename) ? null : wknamerename,
+                usuario
             },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 300);
@@ -105,5 +107,4 @@ public sealed class AdminRepository : IAdminRepository
 
         return (metadata, registros);
     }
-
 }

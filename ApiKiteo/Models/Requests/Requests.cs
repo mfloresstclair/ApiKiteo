@@ -71,7 +71,8 @@ public sealed record AprobarSemanaRequest(
 /// </summary>
 public sealed record CrearDbRequest(
     [Required] string Wkname,
-    string? Wknamerename
+    string? Wknamerename,
+    string? Usuario      
 );
 
 /// <summary>

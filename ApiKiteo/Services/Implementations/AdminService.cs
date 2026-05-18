@@ -177,7 +177,8 @@ public sealed class AdminService : IAdminService
             }
 
             // ── Ejecutar SP ───────────────────────────────────────────────────
-            var (metadataRows, registrosRows) = await _repo.CrearDbAsync(wkname, wknamerename, ct);
+            var (metadataRows, registrosRows) = await _repo.CrearDbAsync(
+    wkname, wknamerename, request.Usuario, ct);
 
             var metadataList = metadataRows.Select(r => (IDictionary<string, object?>)r).ToList();
             var registrosList = registrosRows.Select(r => (IDictionary<string, object?>)r).ToList();
