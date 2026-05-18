@@ -94,4 +94,36 @@ public sealed class VinsController : KiteoBaseController
         return FromResult(await _service.GetSemanaVinStatusAsync(
             wkname.Trim(), cliente.Trim(), tipo.Trim(), ct));
     }
+    // ── GET /buscar_circuito ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Busca filas en VinBusiness_DB_macro por circuito (item) u overlay dentro de una semana.
+    /// Soporta búsqueda exacta, por arnés padre completo y por coincidencia parcial.
+    /// Solo lectura — no modifica datos.
+    /// </summary>
+    /// <remarks>
+    /// Ejemplos:
+    ///   GET /buscar_circuito?wkname=wk21_142_CEA&amp;circuito=184894C2CEA-489A_C   (exacto)
+    ///   GET /buscar_circuito?wkname=wk21_142_CEA&amp;circuito=184894C2CEA          (todos los hijos del arnés)
+    ///   GET /buscar_circuito?wkname=wk21_142_CEA&amp;circuito=489A                 (parcial)
+    ///   GET /buscar_circuito?wkname=wk21_142_CEA&amp;circuito=489A&amp;soloFaltantes=true
+    /// </remarks>
+    [HttpGet("buscar_circuito")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> BuscarCircuito(
+        [FromQuery] string? wkname,
+        [FromQuery] string? circuito,
+        [FromQuery] bool soloFaltantes = false,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(wkname) || string.IsNullOrWhiteSpace(circuito))
+            return BadRequest(ErrorResponse.Create(
+                "Los parámetros 'wkname' y 'circuito' son requeridos.",
+                ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.BuscarCircuitoAsync(
+            wkname.Trim(), circuito.Trim(), soloFaltantes, ct));
+    }
 }

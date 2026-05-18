@@ -16,6 +16,6 @@ public static class ErrorCodes
 
     public const string Admin400   = "ADMIN_400";
     public const string Admin500   = "ADMIN_500";
-    public const string Admin404 = "ADMIN_404";  
+    public const string Admin404 = "ADMIN_404";
     public const string Admin409 = "ADMIN_409";
 }

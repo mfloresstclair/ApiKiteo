@@ -36,13 +36,22 @@ public sealed class SemanasController : KiteoBaseController
     }
 
     /// <summary>
-    /// Obtiene la lista de semanas con estatus Pendiente.
+    /// Obtiene semanas con su estatus (Pendiente / APROBADA).
+    /// filtro: 0 = todos (últimas 2 semanas), 1 = solo pendientes, 2 = solo aprobadas.
     /// </summary>
     [HttpGet("semanas_pendientes")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSemanasPendientes(CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetSemanasPendientes(
+        [FromQuery] byte filtro = 0,
+        CancellationToken ct = default)
     {
-        var result = await _service.GetSemanasPendientesAsync(ct);
+        if (filtro > 2)
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'filtro' debe ser 0 (todos), 1 (pendientes) o 2 (aprobadas).",
+                ErrorCodes.Kiteo400));
+
+        var result = await _service.GetSemanasPendientesAsync(filtro, ct);
         return FromResult(result);
     }
 }

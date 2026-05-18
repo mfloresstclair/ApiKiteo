@@ -55,4 +55,173 @@ public sealed class AdminService : IAdminService
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Admin500);
         }
     }
+    public async Task<ServiceResult<WkPreviewResponse>> PreviewSemanaAsync(
+       string wkname, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogDebug("PreviewSemana | wkname={Wk}", wkname);
+
+            var (resumenRows, detalleRows) = await _repo.PreviewSemanaAsync(wkname, ct);
+
+            var resumenList = resumenRows
+                .Select(r => (IDictionary<string, object?>)r)
+                .ToList();
+
+            if (resumenList.Count == 0)
+                return ServiceResult<WkPreviewResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            // Verificar si el SP devolvió error (400 param inválido / 404 no existe en Vines)
+            var primera = resumenList[0];
+            if (primera.ContainsKey("http_status"))
+            {
+                if (!int.TryParse(primera["http_status"]?.ToString(), out var httpStatus))
+                    httpStatus = 500;
+
+                var mensaje = primera.GetValueOrDefault("message")?.ToString()
+                              ?? "Error al procesar la solicitud.";
+                var codigo = primera.GetValueOrDefault("code")?.ToString()
+                              ?? ErrorCodes.Kiteo500;
+
+                return ServiceResult<WkPreviewResponse>.Fail(httpStatus, mensaje, codigo);
+            }
+
+            // Mapear resumen (siempre 1 fila aquí)
+            var resumen = new WkPreviewResumen
+            {
+                Wkname = primera.GetStr("wkname") ?? wkname,
+                Tipo = primera.GetStr("tipo"),
+                FechaSemana = FormatDate(primera.GetValueOrDefault("fecha_semana")),
+                TotalVins = primera.GetInt("total_vins") ?? 0,
+                TotalGrupos = primera.GetInt("total_grupos") ?? 0,
+                DueDateMin = FormatDate(primera.GetValueOrDefault("due_date_min")),
+                DueDateMax = FormatDate(primera.GetValueOrDefault("due_date_max")),
+                EstatusHeader = primera.GetStr("estatus_header"),  // "SIN_HEADER" | "Pendiente" | "APROBADA"
+                YaCargada = (primera.GetInt("ya_cargada") ?? 0) == 1
+            };
+
+            // Mapear detalle por grupo
+            var detalle = detalleRows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new WkPreviewGrupo
+                {
+                    Grupo = d.GetStr("GRUPO"),
+                    TotalVins = d.GetInt("total_vins") ?? 0,
+                    Descripcion = d.GetStr("descripcion"),
+                    Modelo = d.GetStr("modelo"),
+                    Motherharness = d.GetStr("motherharness"),
+                    DueDateMin = FormatDate(d.GetValueOrDefault("due_date_min")),
+                    DueDateMax = FormatDate(d.GetValueOrDefault("due_date_max")),
+                    HorasPromedio = d.GetDecimal("horas_promedio") ?? 0m
+                })
+                .ToList();
+
+            _logger.LogInformation(
+                "PreviewSemana | wkname={Wk} grupos={G} vins={V}",
+                wkname, detalle.Count, resumen.TotalVins);
+
+            return ServiceResult<WkPreviewResponse>.Ok(
+                new WkPreviewResponse(true, wkname, resumen, detalle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en PreviewSemana wkname={Wk}", wkname);
+            return ServiceResult<WkPreviewResponse>.Fail(
+                500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── Helper: FormatDate ────────────────────────────────────────────────────
+    // Solo si AdminService no tiene ya un helper de fecha. Si existe, omitir este.
+    private static string? FormatDate(object? val)
+    {
+        if (val is null || val is DBNull) return null;
+
+        return val switch
+        {
+            DateTime dt => dt.ToString("yyyy-MM-dd"),
+            DateOnly dOnly => dOnly.ToString("yyyy-MM-dd"),
+            _ => DateTime.TryParse(val.ToString(), out var parsed)
+                                  ? parsed.ToString("yyyy-MM-dd")
+                                  : val.ToString()
+        };
+    }
+    public async Task<ServiceResult<CrearDbResponse>> CrearDbAsync(
+       CrearDbRequest request, CancellationToken ct = default)
+    {
+        var wkname = request.Wkname.Trim();
+        var wknamerename = string.IsNullOrWhiteSpace(request.Wknamerename)
+            ? null
+            : request.Wknamerename.Trim();
+
+        try
+        {
+            _logger.LogInformation(
+                "CrearDb inicio | wkname={Wk} rename={Rename}", wkname, wknamerename);
+
+            // ── Guarda: verificar que la semana no esté ya cargada ────────────
+            // Si el wknamerename está informado, verificamos el nombre DESTINO —
+            // el original aún no existe y es el que el SP va a insertar y luego renombrar.
+            var wknameAVerificar = wknamerename ?? wkname;
+
+            var yaExiste = await _repo.WkNameExistsInMacroAsync(wknameAVerificar, ct);
+            if (yaExiste)
+            {
+                _logger.LogWarning(
+                    "CrearDb rechazado — ya existe | wkname={Wk}", wknameAVerificar);
+                return ServiceResult<CrearDbResponse>.Fail(
+                    409,
+                    $"La semana '{wknameAVerificar}' ya está cargada en VinBusiness_DB_macro.",
+                    ErrorCodes.Admin409);
+            }
+
+            // ── Ejecutar SP ───────────────────────────────────────────────────
+            var (metadataRows, registrosRows) = await _repo.CrearDbAsync(wkname, wknamerename, ct);
+
+            var metadataList = metadataRows.Select(r => (IDictionary<string, object?>)r).ToList();
+            var registrosList = registrosRows.Select(r => (IDictionary<string, object?>)r).ToList();
+
+            if (metadataList.Count == 0)
+                return ServiceResult<CrearDbResponse>.Fail(
+                    500, "El SP no devolvió respuesta de metadata.", ErrorCodes.Kiteo500);
+
+            var meta = metadataList[0];
+
+            // ── Contar: distinct VINs y total líneas ──────────────────────────
+            // El SP devuelve todas las filas insertadas — contamos aquí en memoria.
+            // Evitamos enviarlas al cliente para no saturar la red.
+            var totalLineas = registrosList.Count;
+            var totalVins = registrosList
+                .Select(d => d.GetStr("vin") ?? d.GetStr("VIN"))
+                .Where(v => v is not null)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            // wknameEfectivo es el nombre con el que quedaron los registros en la tabla
+            var wknameEfectivo = wknamerename ?? wkname;
+
+            _logger.LogInformation(
+                "CrearDb completado | wkname={Wk} → {Ef} | vins={V} lineas={L}",
+                wkname, wknameEfectivo, totalVins, totalLineas);
+
+            return ServiceResult<CrearDbResponse>.Ok(
+                new CrearDbResponse(
+                    Ok: true,
+                    Wkname: wkname,
+                    WknameEfectivo: wknameEfectivo,
+                    Wknamedata: meta.GetStr("wknamedata"),
+                    Descripcion: meta.GetStr("descripcion"),
+                    Cliente: meta.GetStr("cliente"),
+                    Tipo: meta.GetStr("tipo"),
+                    TotalVins: totalVins,
+                    TotalLineas: totalLineas));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en CrearDb wkname={Wk}", wkname);
+            return ServiceResult<CrearDbResponse>.Fail(
+                500, "Error interno al crear la semana. Contacta a soporte.", ErrorCodes.Kiteo500);
+        }
+    }
 }

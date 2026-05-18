@@ -64,4 +64,17 @@ public sealed class VinsRepository : IVinsRepository
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
+    public async Task<IEnumerable<dynamic>> BuscarCircuitoAsync(
+        string wkname, string circuito, string soloFaltantes,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+
+        // soloFaltantes es varchar(1) en el SP: '0' = todos, '1' = solo Pendiente.
+        return await conn.QueryAsync(
+            _sp.BuscarCircuito,
+            new { wkname, circuito, soloFaltantes },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
 }

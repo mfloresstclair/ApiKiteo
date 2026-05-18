@@ -31,4 +31,8 @@
     <PackageReference Include="Serilog.Enrichers.Environment" Version="2.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include=".config\" />
+  </ItemGroup>
+
 </Project>

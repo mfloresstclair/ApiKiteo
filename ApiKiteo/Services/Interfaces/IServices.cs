@@ -20,7 +20,7 @@ public interface ISemanasService
         string cliente, string tipo, CancellationToken ct = default);
 
     Task<ServiceResult<IReadOnlyList<SemanaPendienteItem>>> GetSemanasPendientesAsync(
-        CancellationToken ct = default);
+        byte filtro = 0, CancellationToken ct = default);
 }
 
 // ─── Empleados ────────────────────────────────────────────────────────────────
@@ -46,6 +46,10 @@ public interface IVinsService
 
     Task<ServiceResult<SemanaVinStatusResponse>> GetSemanaVinStatusAsync(
         string wkname, string cliente, string tipo, CancellationToken ct = default);
+
+    Task<ServiceResult<BuscarCircuitoResponse>> BuscarCircuitoAsync(
+        string wkname, string circuito, bool soloFaltantes,
+        CancellationToken ct = default);
 }
 
 // ─── Escaneo ──────────────────────────────────────────────────────────────────
@@ -71,6 +75,12 @@ public interface IAdminService
 {
     Task<ServiceResult<AprobarSemanaResponse>> AprobarSemanaAsync(
         AprobarSemanaRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<WkPreviewResponse>> PreviewSemanaAsync(
+        string wkname, CancellationToken ct = default);
+
+    Task<ServiceResult<CrearDbResponse>> CrearDbAsync(
+        CrearDbRequest request, CancellationToken ct = default);
 }
 
 // ─── Admin — Roles ────────────────────────────────────────────────────────────
@@ -90,55 +100,45 @@ public interface IAdminRolesService
     Task<ServiceResult<RoleUpdateResponse>> UpdateRoleAsync(
         int idNum, RoleUpdateRequest request, CancellationToken ct = default);
 }
+
 // ─── MandarFinal ──────────────────────────────────────────────────────────────
 
 public interface IMandarFinalService
 {
-
-
-    /// TOP 20 ParentItems de CNDetalle para la semana en curso.
-    /// search es opcional — filtra por coincidencia parcial en ParentItem.
-
     Task<ServiceResult<MandarFinalParentsResponse>> GetParentsAsync(
         string sitio, string? search, CancellationToken ct = default);
-
-
-    /// Items hijo de un ParentItem para la semana en curso,
-    /// con overlay y flag de presencia en la lista de mandar_a_final.
 
     Task<ServiceResult<MandarFinalPorParentResponse>> GetPorParentAsync(
         string sitio, string parentItem, CancellationToken ct = default);
 
-
-    /// Items registrados en mandar_a_final, filtrados o no por Estatus = 1.
-
     Task<ServiceResult<MandarFinalListResponse>> GetListAsync(
         bool includeInactive, CancellationToken ct = default);
 
-
-    /// Agrega o reactiva items en la lista de mandar_a_final.
-    /// Si viene sitio, el SP valida contra CNDetalle con el lunes calculado.
-
     Task<ServiceResult<MandarFinalAddResponse>> AddItemsAsync(
         MandarFinalAddRequest request, CancellationToken ct = default);
-
-
-    /// Soft-delete de items (Estatus = 0) en la lista de mandar_a_final.
 
     Task<ServiceResult<MandarFinalRemoveResponse>> RemoveItemsAsync(
         MandarFinalRemoveRequest request, CancellationToken ct = default);
 }
 
-
 // ─── Wks ──────────────────────────────────────────────────────────────────────
 
 public interface IWksService
 {
-    /// <summary>
-    /// Devuelve el estado de kits (porcentaje, completos, entregados) por semana y tipo
-    /// para la lista de wknames recibida.
-    /// Tipos compuestos (ZC/ZD) se expanden en filas separadas por el SP.
-    /// </summary>
     Task<ServiceResult<WksStatusBoardResponse>> GetStatusBoardAsync(
         WksStatusBoardRequest request, CancellationToken ct = default);
+}
+
+// ─── Macro Export ─────────────────────────────────────────────────────────────
+
+public interface IMacroService
+{
+    Task StreamCsvAsync(
+        IReadOnlyList<string> wknames,
+        string? tipo,
+        string? cliente,
+        DateOnly? desde,
+        DateOnly? hasta,
+        Stream output,
+        CancellationToken ct = default);
 }

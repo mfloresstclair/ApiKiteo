@@ -46,4 +46,8 @@ public sealed class StoredProceduresOptions
     public string MandarFinalPorParent { get; init; } = string.Empty;
     // ── Wks ────────────────────────────────────────────────────────────────────
     public string WksStatusBoard { get; init; } = string.Empty;
+
+    public string BuscarCircuito { get; init; } = string.Empty;
+    public string PreviewSemana { get; init; } = string.Empty;
+    public string CrearDb { get; init; } = string.Empty;
 }

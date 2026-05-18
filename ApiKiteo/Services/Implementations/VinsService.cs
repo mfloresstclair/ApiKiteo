@@ -195,4 +195,92 @@ public sealed class VinsService : IVinsService
         return raw.Trim();
     }
 
+    // ── /buscar_circuito ──────────────────────────────────────────────────────
+
+    public async Task<ServiceResult<BuscarCircuitoResponse>> BuscarCircuitoAsync(
+        string wkname, string circuito, bool soloFaltantes,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            // El SP espera varchar(1): '1' = solo pendientes, '0' = todos
+            var soloFaltantesParam = soloFaltantes ? "1" : "0";
+
+            var rows = await _repo.BuscarCircuitoAsync(wkname, circuito, soloFaltantesParam, ct);
+            var list = rows.Select(r => (IDictionary<string, object?>)r).ToList();
+
+            // El SP devuelve fila única de error en casos 400 / 404
+            if (list.Count == 1)
+            {
+                var spError = TryExtractSpError<BuscarCircuitoResponse>(list[0]);
+                if (spError is not null) return spError;
+            }
+
+            var resultados = list
+                .Select(d => new BuscarCircuitoItem
+                {
+                    Locacion = d.GetInt("Locacion"),
+                    Vin = d.GetStr("Vin"),
+                    Grupo = d.GetStr("Grupo"),
+                    Vindesc = d.GetStr("vindesc"),
+                    Overlay = d.GetStr("overlay"),
+                    Item = d.GetStr("item"),
+                    Descripcion = d.GetStr("descripcion"),
+                    Estado = d.GetStr("estado"),        // "PENDIENTE" | "KITEADO" | "ENTREGADO"
+                    Operador = d.GetStr("operador"),
+                    Entregado = FormatDateTime(d.GetValueOrDefault("entregado")),
+                    EntregadoPor = d.GetStr("entregado_por"),
+                    EsMandarAFinal = (d.GetInt("es_mandar_a_final") ?? 0) == 1
+                })
+                .ToList();
+
+            return ServiceResult<BuscarCircuitoResponse>.Ok(
+                new BuscarCircuitoResponse(
+                    true, wkname, circuito, soloFaltantes, resultados.Count, resultados));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error en BuscarCircuito wkname={Wk} circuito={Cir}", wkname, circuito);
+            return ServiceResult<BuscarCircuitoResponse>.Fail(
+                500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Lee http_status del rowset del SP.
+    /// Devuelve null si es 200 o si la columna no existe (resultado normal).
+    /// </summary>
+    private static ServiceResult<T>? TryExtractSpError<T>(IDictionary<string, object?> d)
+    {
+        var rawStatus = d.GetValueOrDefault("http_status");
+        if (rawStatus is null) return null;
+
+        if (!int.TryParse(rawStatus.ToString(), out var httpStatus)) return null;
+        if (httpStatus == 200) return null;
+
+        var mensaje = d.GetValueOrDefault("message")?.ToString() ?? "Error al procesar la solicitud.";
+        var codigo = d.GetValueOrDefault("code")?.ToString() ?? ErrorCodes.Kiteo500;
+
+        return ServiceResult<T>.Fail(httpStatus, mensaje, codigo);
+    }
+
+    /// <summary>
+    /// Convierte DateTime a ISO 8601 completo con hora — campo Entregado sí tiene hora relevante.
+    /// </summary>
+    private static string? FormatDateTime(object? val)
+    {
+        if (val is null || val is DBNull) return null;
+
+        return val switch
+        {
+            DateTime dt => dt.ToString("yyyy-MM-ddTHH:mm:ss"),
+            _ => DateTime.TryParse(val.ToString(), out var parsed)
+                               ? parsed.ToString("yyyy-MM-ddTHH:mm:ss")
+                               : val.ToString()
+        };
+    }
+
 }

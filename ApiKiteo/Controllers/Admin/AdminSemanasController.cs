@@ -36,4 +36,27 @@ public sealed class AdminSemanasController : KiteoBaseController
 
         return FromResult(await _service.AprobarSemanaAsync(request, ct));
     }
+
+    /// <summary>
+    /// Previsualiza el contenido de una semana antes de aprobarla.
+    /// Devuelve resumen general + detalle por grupo. Solo lectura.
+    /// </summary>
+    /// <remarks>
+    /// Ejemplo: GET /api/semanas/preview?wkname=wk22_196_CEA
+    /// </remarks>
+    [HttpGet("preview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PreviewSemana(
+        [FromQuery] string? wkname,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'wkname' es requerido.",
+                ErrorCodes.Admin400));
+
+        return FromResult(await _service.PreviewSemanaAsync(wkname.Trim(), ct));
+    }
 }

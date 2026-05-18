@@ -7,7 +7,7 @@ namespace ApiKiteo.API.Models.Responses;
 /// Contrato fijo con KiteoApp WPF — no cambiar nombres de propiedades.
 
 public sealed record AuthLoginResponse(
-    bool   Ok,
+    bool Ok,
     string Username,
     string Access           // "LPaccess" | "FAaccess"
 );
@@ -30,7 +30,12 @@ public sealed record SemanaItem
     public string? Estatus { get; init; }
 }
 
-public sealed record SemanaPendienteItem(string Wkname);
+public sealed record SemanaPendienteItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string? Estatus { get; init; }   // "Pendiente" | "APROBADA"
+    public string? AprobadoPor { get; init; }   // null si está pendiente
+}
 
 // ─── Empleados ────────────────────────────────────────────────────────────────
 
@@ -170,6 +175,23 @@ public sealed record SemanaVinesEntregaResponse(
 public sealed record AprobarSemanaResponse(
     bool Ok,
     string Mensaje
+);
+
+/// <summary>
+/// Respuesta de POST /api/semanas/crear.
+/// Solo devuelve conteos — no los datos completos para evitar timeout.
+/// WknameEfectivo = wknamerename si hubo renombre, si no = wkname original.
+/// </summary>
+public sealed record CrearDbResponse(
+    bool Ok,
+    string Wkname,
+    string WknameEfectivo,   // el wkname final después del posible renombre
+    string? Wknamedata,       // sufijo del wkname: CEA, ZC/ZD, C2, etc.
+    string? Descripcion,      // p.ej "BodyCVZC ,BodyCVZD" para ZC/ZD, null para CEA/C2
+    string? Cliente,          // "TBB" | "BB"
+    string? Tipo,             // "CEA" | "ZC/ZD" | "ZACV" | "T3" | "C2" | "BODYHDX"
+    int TotalVins,        // COUNT(DISTINCT VIN) de las filas insertadas
+    int TotalLineas       // COUNT(*) total de filas insertadas en VinBusiness_DB_macro
 );
 
 public sealed record EscanearBulkResponse(
@@ -408,4 +430,76 @@ public sealed record WksStatusBoardResponse(
     bool Ok,
     int Total,
     IReadOnlyList<WksStatusBoardRow> Resultados
+);
+
+// ─── Admin — semana preview ───────────────────────────────────────────────────
+
+/// <summary>
+/// Result set 1: resumen general de la semana (1 fila).
+/// estatus_header: "SIN_HEADER" | "Pendiente" | "APROBADA"
+/// ya_cargada: true si el Job ya corrió crea_db para esta semana.
+/// </summary>
+public sealed record WkPreviewResumen
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string? Tipo { get; init; }
+    public string? FechaSemana { get; init; }   // date → string ISO yyyy-MM-dd
+    public int TotalVins { get; init; }
+    public int TotalGrupos { get; init; }
+    public string? DueDateMin { get; init; }   // date → string ISO yyyy-MM-dd
+    public string? DueDateMax { get; init; }
+    public string? EstatusHeader { get; init; }   // "SIN_HEADER" | "Pendiente" | "APROBADA"
+    public bool YaCargada { get; init; }   // ya existe en VinBusiness_DB_macro
+}
+
+/// <summary>
+/// Result set 2: detalle por grupo (1 fila por grupo), ordenado por total_vins DESC.
+/// </summary>
+public sealed record WkPreviewGrupo
+{
+    public string? Grupo { get; init; }
+    public int TotalVins { get; init; }
+    public string? Descripcion { get; init; }
+    public string? Modelo { get; init; }
+    public string? Motherharness { get; init; }
+    public string? DueDateMin { get; init; }   // date → string ISO yyyy-MM-dd
+    public string? DueDateMax { get; init; }
+    public decimal HorasPromedio { get; init; }
+}
+
+public sealed record WkPreviewResponse(
+    bool Ok,
+    string Wkname,
+    WkPreviewResumen Resumen,
+    IReadOnlyList<WkPreviewGrupo> Detalle
+);
+
+/// <summary>
+/// Fila devuelta por Kit_vin_buscar_circuito.
+/// Busca por item exacto, overlay completo o coincidencia parcial en ambos campos.
+/// estado: "PENDIENTE" | "KITEADO" | "ENTREGADO"
+/// </summary>
+public sealed record BuscarCircuitoItem
+{
+    public int? Locacion { get; init; }
+    public string? Vin { get; init; }
+    public string? Grupo { get; init; }
+    public string? Vindesc { get; init; }
+    public string? Overlay { get; init; }
+    public string? Item { get; init; }
+    public string? Descripcion { get; init; }
+    public string? Estado { get; init; }   // "PENDIENTE" | "KITEADO" | "ENTREGADO"
+    public string? Operador { get; init; }
+    public string? Entregado { get; init; }   // DateTime → string ISO, null si no entregado
+    public string? EntregadoPor { get; init; }
+    public bool EsMandarAFinal { get; init; }   // Locacion = 0
+}
+
+public sealed record BuscarCircuitoResponse(
+    bool Ok,
+    string Wkname,
+    string Circuito,
+    bool SoloFaltantes,
+    int Total,
+    IReadOnlyList<BuscarCircuitoItem> Resultados
 );

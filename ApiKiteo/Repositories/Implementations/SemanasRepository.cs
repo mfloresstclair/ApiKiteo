@@ -31,11 +31,14 @@ public sealed class SemanasRepository : ISemanasRepository
     }
 
     public async Task<IEnumerable<dynamic>> GetSemanasPendientesAsync(
-        CancellationToken ct = default)
+        byte filtro = 0, CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
+
+        // @filtro: 0 = todos (últimas 2 semanas), 1 = solo Pendiente, 2 = solo APROBADA
         return await conn.QueryAsync(
             _sp.GetSemanasPendientes,
+            new { filtro },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }

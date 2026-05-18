@@ -59,27 +59,33 @@ public sealed class SemanasService : ISemanasService
     }
 
     public async Task<ServiceResult<IReadOnlyList<SemanaPendienteItem>>> GetSemanasPendientesAsync(
-        CancellationToken ct = default)
+        byte filtro = 0, CancellationToken ct = default)
     {
         try
         {
-            _logger.LogDebug("Query GetSemanasPendientes");
+            _logger.LogDebug("Query GetSemanasPendientes | filtro={Filtro}", filtro);
 
-            var rows = await _repo.GetSemanasPendientesAsync(ct);
+            var rows = await _repo.GetSemanasPendientesAsync(filtro, ct);
 
             var result = rows
                 .Select(r => (IDictionary<string, object?>)r)
                 .Where(d => d.GetValueOrDefault("wkname") is not null)
-                .Select(d => new SemanaPendienteItem(d["wkname"]!.ToString()!))
+                .Select(d => new SemanaPendienteItem
+                {
+                    Wkname = d["wkname"]!.ToString()!,
+                    Estatus = d.GetValueOrDefault("estatus")?.ToString(),
+                    AprobadoPor = d.GetValueOrDefault("aprobado_por")?.ToString()
+                })
                 .ToList();
 
-            _logger.LogInformation("GetSemanasPendientes | resultados={Count}", result.Count);
+            _logger.LogInformation(
+                "GetSemanasPendientes | filtro={Filtro} resultados={Count}", filtro, result.Count);
 
             return ServiceResult<IReadOnlyList<SemanaPendienteItem>>.Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetSemanasPendientes");
+            _logger.LogError(ex, "Error en GetSemanasPendientes filtro={Filtro}", filtro);
             return ServiceResult<IReadOnlyList<SemanaPendienteItem>>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }

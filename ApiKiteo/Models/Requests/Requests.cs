@@ -65,6 +65,29 @@ public sealed record AprobarSemanaRequest(
     [Required] string AprobadoPor
 );
 
+/// <summary>
+/// POST /api/semanas/crear
+/// wknamerename es opcional — si viene, el SP renombra el wkname después de insertar.
+/// </summary>
+public sealed record CrearDbRequest(
+    [Required] string Wkname,
+    string? Wknamerename
+);
+
+/// <summary>
+/// GET /api/macro/export
+/// Todos los filtros son opcionales.
+/// Sin filtros → últimas 4 semanas por recorddate.
+/// wknames: lista separada por comas — ej: wk22_196_CEA,wk21_142_CEA
+/// </summary>
+public sealed record MacroExportRequest(
+    string? Wknames,    // CSV string → se parsea en el controller
+    string? Tipo,
+    string? Cliente,
+    DateOnly? Desde,
+    DateOnly? Hasta
+);
+
 /// <summary>POST /escanear_bulk — uso temporal para carga masiva</summary>
 public sealed record EscanearBulkRequest(
     [Required] string Wkname,
