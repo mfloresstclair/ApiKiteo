@@ -61,7 +61,7 @@ jobs:
           (Get-Service -Name $ServiceName).WaitForStatus('Running','00:00:30')  
 
   deploy_prod:
-    needs: build
+    needs: deploy_bkp
     runs-on: [self-hosted, windows, apikiteo-prod]
     steps:
       - name: Download artifact
