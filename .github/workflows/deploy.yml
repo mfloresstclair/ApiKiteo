@@ -73,7 +73,7 @@ jobs:
       - name: Stop / Deploy / Start (PROD)
         shell: powershell
         run: |
-          $ServiceName = "ApiKkiteoMain"
+          $ServiceName = "ApiKiteoMain"
           $TargetDir   = "C:\APIs\APISMX_New"
           $StagingDir  = "C:\deploy\apikiteo_publish"
           $BackupDir   = "C:\APIs\APISMX_New_prev"
