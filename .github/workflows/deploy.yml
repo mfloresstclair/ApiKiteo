@@ -1,0 +1,98 @@
+name: Deploy ApiKiteo
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        run: dotnet publish -c Release -o publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apikiteo_publish
+          path: publish/**
+
+  deploy_bkp:
+    needs: build
+    runs-on: [self-hosted, windows, apikiteo-bkp]
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apikiteo_publish
+          path: C:\deploy\apikiteo_publish
+
+      - name: Stop / Deploy / Start (BKP)
+        shell: powershell
+        run: |
+          $ServiceName = "Api_Kiteo_bkp"
+          $TargetDir   = "C:\APIs\API"
+          $StagingDir  = "C:\deploy\apikiteo_publish"
+          $BackupDir   = "C:\APIs\API_prev"
+
+          Stop-Service -Name $ServiceName -Force
+          (Get-Service -Name $ServiceName).WaitForStatus('Stopped','00:00:30')
+
+          # Backup opcional (por si quieres rollback rápido)
+          if (Test-Path $BackupDir) { Remove-Item $BackupDir -Recurse -Force }
+          if (Test-Path $TargetDir) { Copy-Item $TargetDir $BackupDir -Recurse -Force }
+
+          # Limpia y copia
+          if (!(Test-Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir | Out-Null }
+          Remove-Item "$TargetDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item "$StagingDir\*" $TargetDir -Recurse -Force
+
+          Start-Service -Name $ServiceName
+
+          (Get-Service -Name $ServiceName).WaitForStatus('Running','00:00:30')  
+
+  deploy_prod:
+    needs: deploy_bkp
+    runs-on: [self-hosted, windows, apikiteo-prod]
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apikiteo_publish
+          path: C:\deploy\apikiteo_publish
+  
+      - name: Stop / Deploy / Start (PROD)
+        shell: powershell
+        run: |
+          $ServiceName = "ApiKiteoMain"
+          $TargetDir   = "C:\APIs\APISMX_New"
+          $StagingDir  = "C:\deploy\apikiteo_publish"
+          $BackupDir   = "C:\APIs\APISMX_New_prev"
+  
+          Write-Host ">>> STOP SERVICE"
+          Stop-Service -Name $ServiceName -Force
+          (Get-Service -Name $ServiceName).WaitForStatus('Stopped','00:00:30')
+  
+          Write-Host ">>> BACKUP"
+          if (Test-Path $BackupDir) { Remove-Item $BackupDir -Recurse -Force }
+          if (Test-Path $TargetDir) { Copy-Item $TargetDir $BackupDir -Recurse -Force }
+  
+          Write-Host ">>> CLEAN"
+          if (!(Test-Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
+          Remove-Item "$TargetDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+  
+          Write-Host ">>> COPY"
+          Copy-Item "$StagingDir\*" $TargetDir -Recurse -Force
+  
+          Write-Host ">>> START SERVICE"
+          Start-Service -Name $ServiceName
+          (Get-Service -Name $ServiceName).WaitForStatus('Running','00:00:30')
