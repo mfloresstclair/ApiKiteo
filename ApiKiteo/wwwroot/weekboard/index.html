@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekboard · Kiteo</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:      #eef0f3;
+  --white:   #ffffff;
+  --ink:     #080a10;
+  --muted:   #64748b;
+  --line:    #cbd5e1;
+  --line2:   #e2e8f0;
+
+  --green:  #16a34a;  --green-light:#dcfce7;
+  --teal:   #0369a1;  --teal-light: #e0f2fe;
+  --amber:  #b45309;  --amber-light:#fef3c7;
+  --red:    #be123c;  --red-light:  #ffe4e6;
+
+  --header-bg: #0f172a;
+
+  --mono:    'DM Mono', monospace;
+  --display: 'Bebas Neue', sans-serif;
+  --body:    'Inter', sans-serif;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER
+════════════════════════════════════════════════════════════════ */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:50px;
+  background:var(--header-bg);flex-shrink:0;
+}
+.logo{font-family:var(--display);font-size:24px;letter-spacing:1px;color:#fff;display:flex;align-items:center;gap:9px}
+.live{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+
+.h-chips{display:flex;gap:5px}
+.chip{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;
+  background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.12)}
+
+.h-right{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,0.4)}
+#upd{color:rgba(255,255,255,0.7)}
+.cd{display:flex;align-items:center;gap:5px}
+.rw{width:20px;height:20px}
+.rw svg{transform:rotate(-90deg)}
+circle.rb{fill:none;stroke:rgba(255,255,255,0.1);stroke-width:2.5}
+circle.rf{fill:none;stroke:#22c55e;stroke-width:2.5;stroke-linecap:round;
+  stroke-dasharray:56.5;transition:stroke-dashoffset 1s linear}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL AREA
+════════════════════════════════════════════════════════════════ */
+main{flex:1;overflow-y:auto;padding:16px 18px;scrollbar-width:thin}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLA PIZARRÓN
+════════════════════════════════════════════════════════════════ */
+.board-wrap{
+  background:var(--white);
+  border-radius:10px;
+  border:1px solid var(--line);
+  overflow:hidden;
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);
+}
+
+table{
+  width:100%;border-collapse:collapse;
+  font-family:var(--body);
+  table-layout:fixed;
+}
+
+/* ── Cabecera doble ── */
+thead tr.row-title td{
+  background:var(--header-bg);
+  color:#fff;font-weight:700;font-size:13px;
+  text-align:center;padding:8px 0;
+  letter-spacing:.5px;
+}
+thead tr.row-title td.main-title{
+  font-family:var(--display);font-size:18px;letter-spacing:2px;
+}
+thead tr.row-title td.kits-title{
+  border-left:2px solid rgba(255,255,255,0.15);
+}
+
+thead tr.row-cols th{
+  background:#1e293b;
+  color:rgba(255,255,255,0.75);
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.8px;text-transform:uppercase;
+  text-align:center;padding:9px 6px;
+  border-right:1px solid rgba(255,255,255,0.07);
+}
+thead tr.row-cols th:last-child{border-right:none}
+thead tr.row-cols th.col-wk,
+thead tr.row-cols th.col-cli{text-align:left;padding-left:14px}
+
+/* ── Fila separadora de cliente ── */
+tr.row-grupo td{
+  background:#f1f5f9;
+  color:var(--muted);
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:2px;text-transform:uppercase;
+  padding:5px 14px;
+  border-top:2px solid var(--line);
+  border-bottom:1px solid var(--line2);
+}
+
+/* ── Filas de datos ── */
+tr.row-data{
+  border-bottom:1px solid var(--line2);
+  transition:background .15s;
+}
+tr.row-data:last-child{border-bottom:none}
+tr.row-data:hover{background:#f8fafc}
+
+tr.row-data td{
+  padding:0 8px;height:52px;
+  text-align:center;
+  border-right:1px solid var(--line2);
+  vertical-align:middle;
+}
+tr.row-data td:last-child{border-right:none}
+tr.row-data td.td-wk{
+  font-family:var(--display);font-size:36px;
+  text-align:left;padding-left:14px;
+  color:var(--ink);letter-spacing:.5px;
+  width:72px;
+}
+tr.row-data td.td-cli{
+  text-align:left;padding-left:10px;
+  font-weight:700;font-size:14px;
+  letter-spacing:.5px;
+  width:80px;
+}
+tr.row-data td.td-num{
+  font-family:var(--mono);font-size:16px;font-weight:500;
+  color:var(--ink);
+}
+tr.row-data td.td-rest{
+  font-family:var(--mono);font-size:16px;font-weight:500;
+}
+
+/* ── Columna % MACRO — protagonista ── */
+td.td-porc{
+  font-family:var(--display);font-size:30px;
+  font-weight:900;text-align:right;padding-right:18px;
+  width:110px;
+}
+
+/* ── Colores de fila según tier ── */
+tr.t-g td.td-porc{color:var(--green)}
+tr.t-t td.td-porc{color:var(--teal)}
+tr.t-a td.td-porc{color:var(--amber)}
+tr.t-r td.td-porc{color:var(--red)}
+
+tr.t-g td.td-cli{color:var(--green)}
+tr.t-t td.td-cli{color:var(--teal)}
+tr.t-a td.td-cli{color:var(--amber)}
+tr.t-r td.td-cli{color:var(--red)}
+
+tr.t-g td.td-rest{color:var(--green)}
+tr.t-t td.td-rest{color:var(--teal)}
+tr.t-a td.td-rest{color:var(--amber)}
+tr.t-r td.td-rest{color:var(--red)}
+
+/* barra de progreso dentro de la celda % */
+.porc-cell{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.bar-mini{width:100%;height:4px;background:rgba(0,0,0,0.07);border-radius:2px;overflow:hidden}
+.bar-mini-fill{height:100%;border-radius:2px;transition:width 1.1s cubic-bezier(.4,0,.2,1)}
+tr.t-g .bar-mini-fill{background:var(--green)}
+tr.t-t .bar-mini-fill{background:var(--teal)}
+tr.t-a .bar-mini-fill{background:var(--amber)}
+tr.t-r .bar-mini-fill{background:var(--red)}
+
+/* ── Flash de actualización — fila parpadea verde suave ── */
+@keyframes flash{0%{background:#f0fdf4}100%{background:transparent}}
+tr.updated{animation:flash .8s ease}
+
+/* ═══════════════════════════════════════════════════════════════
+   SKELETON (solo primera carga)
+════════════════════════════════════════════════════════════════ */
+.skel-wrap{background:var(--white);border-radius:10px;border:1px solid var(--line);overflow:hidden}
+.skel-row{display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line2)}
+.skel-row:last-child{border-bottom:none}
+.sk{height:14px;border-radius:4px;background:#e2e8f0;animation:sh 1.3s ease-in-out infinite}
+@keyframes sh{0%,100%{opacity:.6}50%{opacity:.2}}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMPTY / ERROR
+════════════════════════════════════════════════════════════════ */
+.empty{display:flex;align-items:center;justify-content:center;
+  height:220px;font-family:var(--mono);font-size:12px;color:var(--muted);
+  background:var(--white);border-radius:10px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo"><div class="live"></div>WEEKBOARD</div>
+    <div class="h-chips" id="chips"></div>
+    <div class="h-right">
+      <span id="upd">—</span>
+      <div class="cd">
+        <span id="cdn">—</span>s
+        <div class="rw">
+          <svg width="20" height="20" viewBox="0 0 22 22">
+            <circle class="rb" cx="11" cy="11" r="9"/>
+            <circle class="rf" id="rf" cx="11" cy="11" r="9"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Tabla ── -->
+  <main id="main"></main>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG — parámetros de URL
+// ?combos=TBB:CEA,TBB:C2C&ultimas=8&refresh=30&api=http://...
+// ════════════════════════════════════════════════════════════════
+const P       = new URLSearchParams(location.search);
+const API     = (P.get('api') || '').replace(/\/$/,'');
+const REFRESH = Math.max(10, parseInt(P.get('refresh') || '30', 10));
+const ULTIMAS = Math.max(1,  parseInt(P.get('ultimas') || '8',  10));
+const COMBOS  = (P.get('combos') || 'TBB:CEA,TBB:C2C')
+  .split(',').map(s=>s.trim()).filter(Boolean)
+  .map(s=>{ const [c,t]=s.split(':'); return {cliente:(c||'').trim(),tipo:(t||'').trim()} })
+  .filter(c=>c.cliente&&c.tipo);
+
+// chips en header
+const chipsEl = document.getElementById('chips');
+COMBOS.forEach(c=>{
+  const el=document.createElement('span');
+  el.className='chip'; el.textContent=`${c.cliente} · ${c.tipo}`;
+  chipsEl.appendChild(el);
+});
+
+// ════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════
+const wkNum  = s=>{ const m=String(s).match(/^wk(\d+)/i); return m?+m[1]:0; };
+const tier   = p=> p>=90?'t-g': p>=70?'t-t': p>=50?'t-a':'t-r';
+const toFixed= (n,d=1)=> Number(n).toFixed(d);
+const now    = ()=>new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+// ════════════════════════════════════════════════════════════════
+// API
+// ════════════════════════════════════════════════════════════════
+async function fetchSemanas(cliente,tipo){
+  // GET /semanas → FromResult devuelve array directo: [{clave, estatus}]
+  const r=await fetch(`${API}/semanas?cliente=${encodeURIComponent(cliente)}&tipo=${encodeURIComponent(tipo)}`);
+  if(!r.ok) return [];
+  const d=await r.json();
+  const list=Array.isArray(d)?d:(d.resultados||d.Resultados||[]);
+  return list.map(s=>({clave:s.clave||s.Clave||'',estatus:s.estatus||s.Estatus||''}));
+}
+
+async function fetchBoard(wknames){
+  // POST /wks/status_board → {ok,total,resultados:[WksStatusBoardRow]}
+  // WksStatusBoardRow: {wk,tipo,vinCant,kitsComp,kitCompFinal,kitsCompTot,porc}
+  const r=await fetch(`${API}/wks/status_board`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({wknames})
+  });
+  if(!r.ok) return [];
+  const d=await r.json();
+  return d.resultados||d.Resultados||[];
+}
+
+// ════════════════════════════════════════════════════════════════
+// ESTADO — clave de cada fila para actualizaciones in-place
+// clave: "WK20|CEA"
+// ════════════════════════════════════════════════════════════════
+let rowState = new Map(); // clave → {porc, vinCant, kitsComp, kitCompFinal, kitsCompTot}
+let tableBuilt = false;
+
+// ── Construir tabla por primera vez ──────────────────────────────
+function buildTable(groups){
+  /*
+    groups: [
+      {
+        cliente: "TBB",
+        rows: [{ wk, tipo, vinCant, kitsComp, kitCompFinal, kitsCompTot, porc }]
+      }
+    ]
+    ordenado por cliente; dentro de cada cliente, por wk desc
+  */
+  const main = document.getElementById('main');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'board-wrap';
+
+  const table = document.createElement('table');
+  table.id = 'board-table';
+
+  // ── thead ──
+  table.innerHTML = `
+  <thead>
+    <tr class="row-title">
+      <td colspan="2" class="main-title">FINAL DE TURNO</td>
+      <td colspan="6" class="kits-title" style="text-align:center">KITS</td>
+    </tr>
+    <tr class="row-cols">
+      <th class="col-wk"  style="width:72px">WK</th>
+      <th class="col-cli" style="width:80px">CLIENTE</th>
+      <th>TOTALES</th>
+      <th>RESTANTES</th>
+      <th>COMPL.<br>KITEO</th>
+      <th>COMPL.<br>FINAL</th>
+      <th>TOTAL<br>COMPL.</th>
+      <th style="width:110px">% MACRO</th>
+    </tr>
+  </thead>`;
+
+  const tbody = document.createElement('tbody');
+  tbody.id = 'board-body';
+
+  groups.forEach(group=>{
+    // separador de cliente
+    const sep = document.createElement('tr');
+    sep.className = 'row-grupo';
+    sep.innerHTML = `<td colspan="8">${group.cliente}</td>`;
+    tbody.appendChild(sep);
+
+    group.rows.forEach(row=>{
+      const wk     = (row.wk||row.Wk||'').toUpperCase();
+      const tipo   = row.tipo||row.Tipo||'';
+      const clave  = `${wk}|${tipo}`;
+      const vc     = row.vinCant   ??row.VinCant   ??0;
+      const kc     = row.kitsComp  ??row.KitsComp  ??0;
+      const kf     = row.kitCompFinal??row.KitCompFinal??0;
+      const kt     = row.kitsCompTot ??row.KitsCompTot ??0;
+      const porc   = parseFloat(row.porc??row.Porc??0);
+      const rest   = Math.max(0, vc - kt);
+      const tc     = tier(porc);
+
+      rowState.set(clave,{porc,vc,kc,kf,kt,rest});
+
+      const tr = document.createElement('tr');
+      tr.className = `row-data ${tc}`;
+      tr.dataset.clave = clave;
+      tr.innerHTML = rowHTML(wk, tipo, vc, rest, kc, kf, kt, porc);
+      tbody.appendChild(tr);
+    });
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  main.innerHTML = '';
+  main.appendChild(wrap);
+  tableBuilt = true;
+}
+
+// ── HTML interno de una fila ──────────────────────────────────────
+function rowHTML(wk, tipo, vc, rest, kc, kf, kt, porc){
+  const porcR  = toFixed(porc,1);
+  const fillW  = Math.min(porc,100).toFixed(1);
+  return `
+    <td class="td-wk">${wk.replace(/^WK/i,'')}</td>
+    <td class="td-cli">${tipo}</td>
+    <td class="td-num" data-f="vc">${vc}</td>
+    <td class="td-rest" data-f="rest">${rest}</td>
+    <td class="td-num" data-f="kc">${kc}</td>
+    <td class="td-num" data-f="kf">${kf}</td>
+    <td class="td-num" data-f="kt">${kt}</td>
+    <td class="td-porc" data-f="porc">
+      <div class="porc-cell">
+        <span data-f="porc-num">${porcR}%</span>
+        <div class="bar-mini"><div class="bar-mini-fill" data-f="bar" style="width:${fillW}%"></div></div>
+      </div>
+    </td>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// ACTUALIZAR TABLA IN-PLACE — sin flash, sin reconstruir DOM
+// ════════════════════════════════════════════════════════════════
+function updateTable(groups){
+  const tbody = document.getElementById('board-body');
+  if(!tbody){ tableBuilt=false; buildTable(groups); return; }
+
+  // recolectar todas las filas nuevas en un mapa rápido
+  const newData = new Map();
+  groups.forEach(g=>{
+    g.rows.forEach(row=>{
+      const wk  = (row.wk||row.Wk||'').toUpperCase();
+      const tipo= row.tipo||row.Tipo||'';
+      newData.set(`${wk}|${tipo}`, row);
+    });
+  });
+
+  // verificar si el conjunto de filas cambió (nuevo wkname apareció o desapareció)
+  const currentKeys = [...document.querySelectorAll('#board-body tr.row-data')].map(tr=>tr.dataset.clave);
+  const newKeys = [...newData.keys()];
+  const setsEqual = currentKeys.length===newKeys.length && currentKeys.every(k=>newData.has(k));
+
+  if(!setsEqual){
+    // reconstruir completo — pero normalmente esto solo pasa cuando entra una semana nueva
+    tableBuilt=false;
+    buildTable(groups);
+    return;
+  }
+
+  // actualizar solo las celdas que cambiaron
+  document.querySelectorAll('#board-body tr.row-data').forEach(tr=>{
+    const clave  = tr.dataset.clave;
+    const row    = newData.get(clave);
+    if(!row) return;
+
+    const vc   = row.vinCant   ??row.VinCant   ??0;
+    const kc   = row.kitsComp  ??row.KitsComp  ??0;
+    const kf   = row.kitCompFinal??row.KitCompFinal??0;
+    const kt   = row.kitsCompTot ??row.KitsCompTot ??0;
+    const porc = parseFloat(row.porc??row.Porc??0);
+    const rest = Math.max(0, vc-kt);
+    const prev = rowState.get(clave)||{};
+
+    let changed = false;
+
+    function setCell(f,val){
+      const el=tr.querySelector(`[data-f="${f}"]`);
+      if(el && String(el.textContent).trim()!==String(val)){
+        el.textContent=val; changed=true;
+      }
+    }
+
+    setCell('vc',   vc);
+    setCell('rest', rest);
+    setCell('kc',   kc);
+    setCell('kf',   kf);
+    setCell('kt',   kt);
+    setCell('porc-num', `${toFixed(porc,1)}%`);
+
+    // barra de progreso
+    const bar = tr.querySelector('[data-f="bar"]');
+    if(bar){
+      const newW = `${Math.min(porc,100).toFixed(1)}%`;
+      if(bar.style.width!==newW){ bar.style.width=newW; changed=true; }
+    }
+
+    // tier class (color de fila)
+    const newTier = tier(porc);
+    if(!tr.classList.contains(newTier)){
+      tr.classList.remove('t-g','t-t','t-a','t-r');
+      tr.classList.add(newTier);
+    }
+
+    // flash suave si algo cambió
+    if(changed){
+      tr.classList.remove('updated');
+      void tr.offsetWidth; // reflow para reiniciar la animación
+      tr.classList.add('updated');
+    }
+
+    rowState.set(clave,{porc,vc,kc,kf,kt,rest});
+  });
+
+  document.getElementById('upd').textContent = now();
+}
+
+// ════════════════════════════════════════════════════════════════
+// SKELETON primera carga
+// ════════════════════════════════════════════════════════════════
+function showSkeleton(){
+  const rows = Array.from({length:8},()=>`
+    <div class="skel-row">
+      <div class="sk" style="width:40px"></div>
+      <div class="sk" style="width:60px"></div>
+      <div class="sk" style="width:50px"></div>
+      <div class="sk" style="width:50px"></div>
+      <div class="sk" style="width:50px"></div>
+      <div class="sk" style="width:50px"></div>
+      <div class="sk" style="width:50px"></div>
+      <div class="sk" style="width:70px;margin-left:auto"></div>
+    </div>`).join('');
+  document.getElementById('main').innerHTML=`<div class="skel-wrap">${rows}</div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// LOAD — fetch + agrupación
+// ════════════════════════════════════════════════════════════════
+async function load(first=false){
+  if(first) showSkeleton();
+  try{
+    // 1. obtener wknames de todos los combos
+    const semMap = new Map(); // wkname → estatus
+    await Promise.all(COMBOS.map(({cliente,tipo})=>
+      fetchSemanas(cliente,tipo).then(items=>{
+        items.sort((a,b)=>wkNum(b.clave)-wkNum(a.clave));
+        items.slice(0,ULTIMAS).forEach(item=>{
+          if(!semMap.has(item.clave)) semMap.set(item.clave,item.estatus);
+        });
+      })
+    ));
+
+    if(!semMap.size){
+      document.getElementById('main').innerHTML='<div class="empty">No hay semanas activas.</div>';
+      tableBuilt=false; return;
+    }
+
+    // 2. status board
+    const rows = await fetchBoard([...semMap.keys()]);
+    if(!rows.length){
+      document.getElementById('main').innerHTML='<div class="empty">Sin datos del pizarrón.</div>';
+      tableBuilt=false; return;
+    }
+
+    // 3. agrupar por cliente (el combo original)
+    //    mapa de cliente: para saber qué cliente corresponde a cada wkname
+    const clienteDeWkname = new Map();
+    for(const {cliente,tipo} of COMBOS){
+      // reconstruimos qué combos mapearon a qué wknames
+      for(const [wkname] of semMap){
+        const parts = wkname.split('_');
+        const tipoPart = parts.slice(2).join('_')||'';
+        // si el tipo del combo coincide con alguna parte del tipo del wkname
+        if(tipoPart.split('/').some(t=>t===tipo) || tipoPart===tipo){
+          if(!clienteDeWkname.has(wkname)) clienteDeWkname.set(wkname,cliente);
+        }
+      }
+    }
+
+    // agrupar filas por cliente
+    const groupsMap = new Map();
+    rows.forEach(row=>{
+      const wk   = (row.wk||row.Wk||'').toLowerCase();
+      const tipo = row.tipo||row.Tipo||'';
+      // buscar el cliente original por wkname
+      let cliente='';
+      for(const [wkname,cli] of clienteDeWkname){
+        if(wkname.toLowerCase().startsWith(wk)){
+          cliente=cli; break;
+        }
+      }
+      if(!cliente) cliente = COMBOS[0]?.cliente||'';
+      if(!groupsMap.has(cliente)) groupsMap.set(cliente,[]);
+      groupsMap.get(cliente).push(row);
+    });
+
+    // ordenar dentro de cada grupo: wk desc, luego tipo asc
+    groupsMap.forEach(arr=>arr.sort((a,b)=>{
+      const d=wkNum(b.wk||b.Wk)-wkNum(a.wk||a.Wk);
+      if(d!==0) return d;
+      return (a.tipo||a.Tipo||'').localeCompare(b.tipo||b.Tipo||'');
+    }));
+
+    const groups=[...groupsMap.entries()].map(([cliente,rows])=>({cliente,rows}));
+
+    if(!tableBuilt) buildTable(groups);
+    else            updateTable(groups);
+
+    document.getElementById('upd').textContent=now();
+  } catch(err){
+    console.error('[Weekboard]',err);
+    if(!tableBuilt)
+      document.getElementById('main').innerHTML=`<div class="empty">Error: ${err.message}</div>`;
+    // si la tabla ya existe, NO la borres — deja los datos anteriores visibles
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// COUNTDOWN + AUTO-REFRESH
+// ════════════════════════════════════════════════════════════════
+const CIRC = 2*Math.PI*9;
+const rfEl = document.getElementById('rf');
+rfEl.style.strokeDasharray = CIRC;
+let cd=REFRESH, timer=null;
+
+function tick(){
+  cd--;
+  document.getElementById('cdn').textContent=cd;
+  rfEl.style.strokeDashoffset=CIRC*(1-cd/REFRESH);
+  if(cd<=0){ clearInterval(timer); load(false).finally(startTimer); }
+}
+function startTimer(){
+  cd=REFRESH; document.getElementById('cdn').textContent=cd;
+  rfEl.style.strokeDashoffset=0;
+  clearInterval(timer); timer=setInterval(tick,1000);
+}
+
+// ── arranque ──
+load(true).finally(startTimer);
+</script>
+</body>
+</html>

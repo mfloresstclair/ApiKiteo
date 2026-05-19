@@ -1,6 +1,7 @@
 using ApiKiteo.API.Configuration;
 using ApiKiteo.API.Infrastructure.Database;
 using ApiKiteo.API.Infrastructure.Ldap;
+using ApiKiteo.API.Infrastructure.Metrics;
 using ApiKiteo.API.Repositories.Implementations;
 using ApiKiteo.API.Repositories.Interfaces;
 using ApiKiteo.API.Services.Implementations;
@@ -67,6 +68,7 @@ builder.Services.AddScoped<IAdminRolesService, AdminRolesService>();
 builder.Services.AddScoped<IMandarFinalService, MandarFinalService>();
 builder.Services.AddScoped<IWksService, WksService>();
 builder.Services.AddScoped<IMacroService, MacroService>();
+builder.Services.AddSingleton<MetricsCollector>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()
@@ -153,7 +155,7 @@ var app = builder.Build();
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ─── Middleware pipeline ──────────────────────────────────────────────────────
-
+app.UseMiddleware<MetricsMiddleware>();
 // Swagger siempre disponible — un solo ambiente
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -187,6 +189,9 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
 
 app.UseCors();
 app.UseAuthorization();
+// ── Weekboard SPA ─────────────────────────────────────────────────────────
+app.UseStaticFiles();   // sirve wwwroot/weekboard/index.html
+// No necesita fallback route — es un solo archivo HTML, no hay client-side routing
 app.MapControllers();
 
 // Endpoint de health-check básico
