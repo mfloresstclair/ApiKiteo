@@ -225,4 +225,56 @@ public sealed class AdminService : IAdminService
                 500, "Error interno al crear la semana. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
     }
+    public async Task<ServiceResult<WkPreviewVinsResponse>> GetPreviewVinsAsync(
+        string wkname, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogDebug("GetPreviewVins | wkname={Wk}", wkname);
+
+            var rows = await _repo.GetPreviewVinsAsync(wkname, ct);
+
+            var resultados = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new WkPreviewVinItem
+                {
+                    Vin = d.GetStr("VIN"),
+                    Semana = d.GetStr("semana"),
+                    Grupo = d.GetStr("grupo"),
+                    Descripcion = d.GetStr("descripcion"),
+                    Modelo = d.GetStr("modelo"),
+                    Motherharness = d.GetStr("motherharness"),
+                    Tipo = d.GetStr("tipo"),
+                    DueDate = FormatDate(d.GetValueOrDefault("due_date")),
+                    Horas = GetDecimal(d.GetValueOrDefault("horas"))
+                })
+                .ToList();
+
+            _logger.LogInformation(
+                "GetPreviewVins | wkname={Wk} total={T}", wkname, resultados.Count);
+
+            return ServiceResult<WkPreviewVinsResponse>.Ok(
+                new WkPreviewVinsResponse(true, wkname, resultados.Count, resultados));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en GetPreviewVins wkname={Wk}", wkname);
+            return ServiceResult<WkPreviewVinsResponse>.Fail(
+                500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── Helper: GetDecimal ────────────────────────────────────────────────────
+    // Solo agregar si AdminService no tiene ya este helper.
+    private static decimal GetDecimal(object? val)
+    {
+        if (val is null || val is DBNull) return 0m;
+        return val switch
+        {
+            decimal d => Math.Round(d, 2),
+            double v => Math.Round((decimal)v, 2),
+            float f => Math.Round((decimal)f, 2),
+            _ => decimal.TryParse(val.ToString(), out var p) ? Math.Round(p, 2) : 0m
+        };
+    }
 }

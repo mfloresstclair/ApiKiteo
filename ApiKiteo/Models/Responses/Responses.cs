@@ -503,3 +503,29 @@ public sealed record BuscarCircuitoResponse(
     int Total,
     IReadOnlyList<BuscarCircuitoItem> Resultados
 );
+
+// ─── Admin — preview vins ─────────────────────────────────────────────────────
+
+/// <summary>
+/// Fila devuelta por GET /api/semanas/preview/vins.
+/// SQL inline sobre Vines — sin SP (query simple de lectura).
+/// </summary>
+public sealed record WkPreviewVinItem
+{
+    public string? Vin { get; init; }
+    public string? Semana { get; init; }   // wkname
+    public string? Grupo { get; init; }
+    public string? Descripcion { get; init; }
+    public string? Modelo { get; init; }
+    public string? Motherharness { get; init; }  // arnés madre del VIN
+    public string? Tipo { get; init; }
+    public string? DueDate { get; init; }   // date → string ISO yyyy-MM-dd
+    public decimal Horas { get; init; }   // HORASTOT
+}
+
+public sealed record WkPreviewVinsResponse(
+    bool Ok,
+    string Wkname,
+    int Total,
+    IReadOnlyList<WkPreviewVinItem> Resultados
+);

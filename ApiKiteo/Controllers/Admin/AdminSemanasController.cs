@@ -94,4 +94,23 @@ public sealed class AdminSemanasController : KiteoBaseController
 
         return FromResult(await _service.CrearDbAsync(request, ct));
     }
+    /// Lista de VINs individuales de una semana para revisión antes de aprobar.
+    /// Se carga bajo demanda — llamar solo cuando el usuario quiere ver los VINs.
+    /// </summary>
+    /// <remarks>
+    /// Ejemplo: GET /api/semanas/preview/vins?wkname=wk22_196_CEA
+    /// </remarks>
+    [HttpGet("preview/vins")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> PreviewVins(
+        [FromQuery] string? wkname,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'wkname' es requerido.", ErrorCodes.Admin400));
+
+        return FromResult(await _service.GetPreviewVinsAsync(wkname.Trim(), ct));
+    }
 }

@@ -1,5 +1,7 @@
 using ApiKiteo.API.Models.Responses;
 
+
+
 namespace ApiKiteo.API.Repositories.Interfaces;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -108,9 +110,15 @@ public interface IAdminRepository
     /// wknamerename es opcional — si viene, el SP renombra el wkname antes del SELECT final.
     /// Usa GridReader por los múltiples result sets.
     /// </summary>
-    Task<(IEnumerable<dynamic> Metadata, IEnumerable<dynamic> Registros)>
-     CrearDbAsync(string wkname, string? wknamerename, string? usuario, 
-        CancellationToken ct = default);
+    Task<(IEnumerable<dynamic> Metadata, IEnumerable<dynamic> Registros)> CrearDbAsync(
+        string wkname, string? wknamerename, string? usuario, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista de VINs individuales de una semana para el preview de admin.
+    /// SQL inline justificado — query simple de lectura sobre Vines sin SP.
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetPreviewVinsAsync(
+        string wkname, CancellationToken ct = default);
 }
 
 // ─── Admin — Roles ────────────────────────────────────────────────────────────

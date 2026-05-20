@@ -81,6 +81,13 @@ public interface IAdminService
 
     Task<ServiceResult<CrearDbResponse>> CrearDbAsync(
         CrearDbRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista de VINs individuales de una semana para el preview de admin.
+    /// Lazy — se carga solo cuando el usuario solicita ver los VINs.
+    /// </summary>
+    Task<ServiceResult<WkPreviewVinsResponse>> GetPreviewVinsAsync(
+        string wkname, CancellationToken ct = default);
 }
 
 // ─── Admin — Roles ────────────────────────────────────────────────────────────

@@ -107,4 +107,30 @@ public sealed class AdminRepository : IAdminRepository
 
         return (metadata, registros);
     }
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> GetPreviewVinsAsync(
+        string wkname, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+
+        // SQL inline justificado: query de solo lectura sin lógica de negocio.
+        // No existe SP para esta operación — query 100% parameterizado.
+        const string sql = """
+            SELECT
+                VIN,
+                wkname          AS semana,
+                GRUPO           AS grupo,
+                Descripcion     AS descripcion,
+                MODELO          AS modelo,
+                motherharness,
+                tipo,
+                CAST(due_date AS date)      AS due_date,
+                ISNULL(HORASTOT, 0)         AS horas
+            FROM dbo.Vines WITH (NOLOCK)
+            WHERE wkname = @wkname
+            ORDER BY GRUPO, VIN
+            """;
+
+        return await conn.QueryAsync(sql, new { wkname }, commandTimeout: 30);
+    }
 }
