@@ -529,3 +529,11 @@ public sealed record WkPreviewVinsResponse(
     int Total,
     IReadOnlyList<WkPreviewVinItem> Resultados
 );
+// ─── Wks — cache cleanup ──────────────────────────────────────────────────────
+
+public sealed record WksCacheCleanupResponse(
+    bool Ok,
+    int TotalEliminadas,
+    int SemanasRetener,
+    int HorasCompletadas
+);

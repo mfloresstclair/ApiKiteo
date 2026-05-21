@@ -10,11 +10,16 @@ namespace ApiKiteo.API.Services.Implementations;
 public sealed class EscaneoService : IEscaneoService
 {
     private readonly IEscaneoRepository _repo;
+    private readonly IWksRepository _wksRepo;   // para RefreshStatusCache
     private readonly ILogger<EscaneoService> _logger;
 
-    public EscaneoService(IEscaneoRepository repo, ILogger<EscaneoService> logger)
+    public EscaneoService(
+        IEscaneoRepository repo,
+        IWksRepository wksRepo,
+        ILogger<EscaneoService> logger)
     {
         _repo = repo;
+        _wksRepo = wksRepo;
         _logger = logger;
     }
 
@@ -61,7 +66,6 @@ public sealed class EscaneoService : IEscaneoService
     {
         try
         {
-            // El SP espera @jsonVines como {"vines":["VIN1","VIN2"]}
             var jsonVines = JsonSerializer.Serialize(new { vines = request.Vines });
 
             var rows = await _repo.EscanearAjusteAsync(
@@ -70,14 +74,11 @@ public sealed class EscaneoService : IEscaneoService
             EscaneoEvento? evento = null;
             var vines = new List<VinItem>();
 
-            // El SP devuelve un result-set mixto:
-            //   • Filas con Tipo = "EvtData"  → evento de resumen
-            //   • Filas con columna "vin"      → VINs procesados
             foreach (var r in rows)
             {
                 var d = (IDictionary<string, object?>)r;
-
                 var tipo = d.GetStr("Tipo");
+
                 if (tipo?.Equals("EvtData", StringComparison.OrdinalIgnoreCase) == true
                     && evento is null)
                 {
@@ -130,14 +131,12 @@ public sealed class EscaneoService : IEscaneoService
                 var d = (IDictionary<string, object?>)r;
                 var tipo = d.GetStr("Tipo") ?? d.GetStr("tipo") ?? string.Empty;
 
-                // EvtData — resumen del evento
                 if (tipo.Equals("EvtData", StringComparison.OrdinalIgnoreCase) && evento is null)
                 {
                     evento = BuildEvento(d);
                     continue;
                 }
 
-                // VinData — VINs actualizados
                 if (tipo.Equals("VinData", StringComparison.OrdinalIgnoreCase))
                 {
                     var vin = d.GetStr("vin") ?? d.GetStr("Vin");
@@ -152,14 +151,12 @@ public sealed class EscaneoService : IEscaneoService
                     continue;
                 }
 
-                // WeekPerc — porcentaje total de la semana para el item
                 if (tipo.Equals("WeekPerc", StringComparison.OrdinalIgnoreCase))
                 {
                     weekPerc = d.GetDecimal("Porcentaje") ?? d.GetDecimal("porcentaje");
                     continue;
                 }
 
-                // GrpData — progreso por grupo
                 if (tipo.Equals("GrpData", StringComparison.OrdinalIgnoreCase))
                 {
                     var grupo = d.GetStr("grupo") ?? d.GetStr("Grupo");
@@ -174,6 +171,10 @@ public sealed class EscaneoService : IEscaneoService
                     }
                 }
             }
+
+            // Cache fire-and-forget — actualiza el status board después del escaneo
+            _ = Task.Run(() =>
+                _wksRepo.RefreshStatusCacheAsync(request.Wkname, CancellationToken.None));
 
             return ServiceResult<EscanearResponse>.Ok(
                 new EscanearResponse(
@@ -211,11 +212,14 @@ public sealed class EscaneoService : IEscaneoService
                 request.Supervisor ?? string.Empty,
                 ct);
 
-            // Resultado genérico — columnas dependen del SP
             var resultados = rows
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => d.ToDictionary(k => k.Key, v => v.Value))
                 .ToList();
+
+            // Cache fire-and-forget — actualiza el status board después de la entrega
+            _ = Task.Run(() =>
+                _wksRepo.RefreshStatusCacheAsync(request.Wkname, CancellationToken.None));
 
             return ServiceResult<SemanaVinesEntregaResponse>.Ok(
                 new SemanaVinesEntregaResponse(
@@ -233,7 +237,7 @@ public sealed class EscaneoService : IEscaneoService
         }
     }
 
-    // ── Helper: construir EscaneoEvento desde un IDictionary ─────────────────
+    // ── Helper ────────────────────────────────────────────────────────────────
 
     private static EscaneoEvento BuildEvento(IDictionary<string, object?> d) =>
         new()

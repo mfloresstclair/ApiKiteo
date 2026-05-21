@@ -79,4 +79,32 @@ public sealed class WksService : IWksService
                              : 0m
         };
     }
+    public async Task<ServiceResult<WksCacheCleanupResponse>> CacheCleanupAsync(
+        int semanasRetener, int horasCompletadas, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "CacheCleanup manual | semanas={S} horas={H}",
+                semanasRetener, horasCompletadas);
+
+            var eliminadas = await _repo.CacheCleanupAsync(
+                semanasRetener, horasCompletadas, ct);
+
+            _logger.LogInformation("CacheCleanup | eliminadas={N}", eliminadas);
+
+            return ServiceResult<WksCacheCleanupResponse>.Ok(
+                new WksCacheCleanupResponse(
+                    Ok: true,
+                    TotalEliminadas: eliminadas,
+                    SemanasRetener: semanasRetener,
+                    HorasCompletadas: horasCompletadas));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en CacheCleanup");
+            return ServiceResult<WksCacheCleanupResponse>.Fail(
+                500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
+        }
+    }
 }

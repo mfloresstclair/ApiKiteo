@@ -68,11 +68,12 @@ public sealed record AprobarSemanaRequest(
 /// <summary>
 /// POST /api/semanas/crear
 /// wknamerename es opcional — si viene, el SP renombra el wkname después de insertar.
+/// usuario registra quién ejecutó kit_vin_crea_db.
 /// </summary>
 public sealed record CrearDbRequest(
     [Required] string Wkname,
     string? Wknamerename,
-    string? Usuario      
+    string? Usuario
 );
 
 /// <summary>
@@ -152,4 +153,13 @@ public sealed record MandarFinalRemoveRequest(
 /// </summary>
 public sealed record WksStatusBoardRequest(
     [Required][MinLength(1)] List<string> Wknames
+);
+
+
+// ─── Wks — cache cleanup ──────────────────────────────────────────────────────
+
+/// <summary>POST /wks/cache/cleanup</summary>
+public sealed record WksCacheCleanupRequest(
+    int SemanasRetener = 8,   // cuántas semanas retener en cache
+    int HorasCompletadas = 48   // horas antes de borrar semanas al 100%
 );

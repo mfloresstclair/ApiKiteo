@@ -9,11 +9,16 @@ namespace ApiKiteo.API.Services.Implementations;
 public sealed class AdminService : IAdminService
 {
     private readonly IAdminRepository _repo;
+    private readonly IWksRepository _wksRepo;   // para RefreshStatusCache
     private readonly ILogger<AdminService> _logger;
 
-    public AdminService(IAdminRepository repo, ILogger<AdminService> logger)
+    public AdminService(
+        IAdminRepository repo,
+        IWksRepository wksRepo,
+        ILogger<AdminService> logger)
     {
-        _repo   = repo;
+        _repo = repo;
+        _wksRepo = wksRepo;
         _logger = logger;
     }
 
@@ -25,7 +30,6 @@ public sealed class AdminService : IAdminService
             var rows = await _repo.AprobarSemanaAsync(request.Wkname, request.AprobadoPor, ct);
             var list = rows.ToList();
 
-            // Opción A: SP devuelve rowset con http_status / message / code
             if (list.Count > 0)
             {
                 var d = (IDictionary<string, object?>)list[0];
@@ -37,14 +41,13 @@ public sealed class AdminService : IAdminService
                 {
                     if (httpStatus != 200)
                     {
-                        var msg  = d.GetStr("message") ?? "Error al aprobar la semana.";
-                        var code = d.GetStr("code")    ?? ErrorCodes.Admin500;
+                        var msg = d.GetStr("message") ?? "Error al aprobar la semana.";
+                        var code = d.GetStr("code") ?? ErrorCodes.Admin500;
                         return ServiceResult<AprobarSemanaResponse>.Fail(httpStatus, msg, code);
                     }
                 }
             }
 
-            // Opción B: SP no devuelve rowset → éxito si no lanzó excepción
             return ServiceResult<AprobarSemanaResponse>.Ok(
                 new AprobarSemanaResponse(true, "Semana aprobada"));
         }
@@ -55,8 +58,9 @@ public sealed class AdminService : IAdminService
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Admin500);
         }
     }
+
     public async Task<ServiceResult<WkPreviewResponse>> PreviewSemanaAsync(
-       string wkname, CancellationToken ct = default)
+        string wkname, CancellationToken ct = default)
     {
         try
         {
@@ -72,7 +76,6 @@ public sealed class AdminService : IAdminService
                 return ServiceResult<WkPreviewResponse>.Fail(
                     500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
 
-            // Verificar si el SP devolvió error (400 param inválido / 404 no existe en Vines)
             var primera = resumenList[0];
             if (primera.ContainsKey("http_status"))
             {
@@ -87,7 +90,6 @@ public sealed class AdminService : IAdminService
                 return ServiceResult<WkPreviewResponse>.Fail(httpStatus, mensaje, codigo);
             }
 
-            // Mapear resumen (siempre 1 fila aquí)
             var resumen = new WkPreviewResumen
             {
                 Wkname = primera.GetStr("wkname") ?? wkname,
@@ -97,11 +99,10 @@ public sealed class AdminService : IAdminService
                 TotalGrupos = primera.GetInt("total_grupos") ?? 0,
                 DueDateMin = FormatDate(primera.GetValueOrDefault("due_date_min")),
                 DueDateMax = FormatDate(primera.GetValueOrDefault("due_date_max")),
-                EstatusHeader = primera.GetStr("estatus_header"),  // "SIN_HEADER" | "Pendiente" | "APROBADA"
+                EstatusHeader = primera.GetStr("estatus_header"),
                 YaCargada = (primera.GetInt("ya_cargada") ?? 0) == 1
             };
 
-            // Mapear detalle por grupo
             var detalle = detalleRows
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new WkPreviewGrupo
@@ -132,37 +133,18 @@ public sealed class AdminService : IAdminService
         }
     }
 
-    // ── Helper: FormatDate ────────────────────────────────────────────────────
-    // Solo si AdminService no tiene ya un helper de fecha. Si existe, omitir este.
-    private static string? FormatDate(object? val)
-    {
-        if (val is null || val is DBNull) return null;
-
-        return val switch
-        {
-            DateTime dt => dt.ToString("yyyy-MM-dd"),
-            DateOnly dOnly => dOnly.ToString("yyyy-MM-dd"),
-            _ => DateTime.TryParse(val.ToString(), out var parsed)
-                                  ? parsed.ToString("yyyy-MM-dd")
-                                  : val.ToString()
-        };
-    }
     public async Task<ServiceResult<CrearDbResponse>> CrearDbAsync(
-       CrearDbRequest request, CancellationToken ct = default)
+        CrearDbRequest request, CancellationToken ct = default)
     {
         var wkname = request.Wkname.Trim();
         var wknamerename = string.IsNullOrWhiteSpace(request.Wknamerename)
-            ? null
-            : request.Wknamerename.Trim();
+            ? null : request.Wknamerename.Trim();
 
         try
         {
             _logger.LogInformation(
                 "CrearDb inicio | wkname={Wk} rename={Rename}", wkname, wknamerename);
 
-            // ── Guarda: verificar que la semana no esté ya cargada ────────────
-            // Si el wknamerename está informado, verificamos el nombre DESTINO —
-            // el original aún no existe y es el que el SP va a insertar y luego renombrar.
             var wknameAVerificar = wknamerename ?? wkname;
 
             var yaExiste = await _repo.WkNameExistsInMacroAsync(wknameAVerificar, ct);
@@ -176,9 +158,8 @@ public sealed class AdminService : IAdminService
                     ErrorCodes.Admin409);
             }
 
-            // ── Ejecutar SP ───────────────────────────────────────────────────
             var (metadataRows, registrosRows) = await _repo.CrearDbAsync(
-    wkname, wknamerename, request.Usuario, ct);
+                wkname, wknamerename, request.Usuario, ct);
 
             var metadataList = metadataRows.Select(r => (IDictionary<string, object?>)r).ToList();
             var registrosList = registrosRows.Select(r => (IDictionary<string, object?>)r).ToList();
@@ -188,10 +169,6 @@ public sealed class AdminService : IAdminService
                     500, "El SP no devolvió respuesta de metadata.", ErrorCodes.Kiteo500);
 
             var meta = metadataList[0];
-
-            // ── Contar: distinct VINs y total líneas ──────────────────────────
-            // El SP devuelve todas las filas insertadas — contamos aquí en memoria.
-            // Evitamos enviarlas al cliente para no saturar la red.
             var totalLineas = registrosList.Count;
             var totalVins = registrosList
                 .Select(d => d.GetStr("vin") ?? d.GetStr("VIN"))
@@ -199,12 +176,15 @@ public sealed class AdminService : IAdminService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
 
-            // wknameEfectivo es el nombre con el que quedaron los registros en la tabla
             var wknameEfectivo = wknamerename ?? wkname;
 
             _logger.LogInformation(
                 "CrearDb completado | wkname={Wk} → {Ef} | vins={V} lineas={L}",
                 wkname, wknameEfectivo, totalVins, totalLineas);
+
+            // Cache fire-and-forget — inicializa el status board para esta semana nueva
+            _ = Task.Run(() =>
+                _wksRepo.RefreshStatusCacheAsync(wknameEfectivo, CancellationToken.None));
 
             return ServiceResult<CrearDbResponse>.Ok(
                 new CrearDbResponse(
@@ -225,6 +205,7 @@ public sealed class AdminService : IAdminService
                 500, "Error interno al crear la semana. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
     }
+
     public async Task<ServiceResult<WkPreviewVinsResponse>> GetPreviewVinsAsync(
         string wkname, CancellationToken ct = default)
     {
@@ -264,8 +245,21 @@ public sealed class AdminService : IAdminService
         }
     }
 
-    // ── Helper: GetDecimal ────────────────────────────────────────────────────
-    // Solo agregar si AdminService no tiene ya este helper.
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string? FormatDate(object? val)
+    {
+        if (val is null || val is DBNull) return null;
+        return val switch
+        {
+            DateTime dt => dt.ToString("yyyy-MM-dd"),
+            DateOnly dOnly => dOnly.ToString("yyyy-MM-dd"),
+            _ => DateTime.TryParse(val.ToString(), out var parsed)
+                                  ? parsed.ToString("yyyy-MM-dd")
+                                  : val.ToString()
+        };
+    }
+
     private static decimal GetDecimal(object? val)
     {
         if (val is null || val is DBNull) return 0m;

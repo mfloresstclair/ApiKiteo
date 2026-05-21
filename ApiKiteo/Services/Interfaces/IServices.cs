@@ -134,6 +134,13 @@ public interface IWksService
 {
     Task<ServiceResult<WksStatusBoardResponse>> GetStatusBoardAsync(
         WksStatusBoardRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Limpia el cache con límites configurables.
+    /// Devuelve cuántas filas fueron eliminadas.
+    /// </summary>
+    Task<ServiceResult<WksCacheCleanupResponse>> CacheCleanupAsync(
+        int semanasRetener, int horasCompletadas, CancellationToken ct = default);
 }
 
 // ─── Macro Export ─────────────────────────────────────────────────────────────

@@ -1,7 +1,5 @@
 using ApiKiteo.API.Models.Responses;
 
-
-
 namespace ApiKiteo.API.Repositories.Interfaces;
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -218,6 +216,21 @@ public interface IWksRepository
     /// </summary>
     Task<IEnumerable<dynamic>> GetStatusBoardAsync(
         string jsonWkname, CancellationToken ct = default);
+
+    /// <summary>
+    /// Recalcula el cache de status board para un wkname específico.
+    /// Fire-and-forget — llamar después de escanear, entregar o crear_db.
+    /// SQL inline en C# — sin SP.
+    /// </summary>
+    Task RefreshStatusCacheAsync(
+        string wkname, CancellationToken ct = default);
+
+    /// <summary>
+    /// Limpia entradas del cache según límites configurables.
+    /// Devuelve el número de filas eliminadas.
+    /// </summary>
+    Task<int> CacheCleanupAsync(
+        int semanasRetener, int horasCompletadas, CancellationToken ct = default);
 }
 
 // ─── Macro Export ─────────────────────────────────────────────────────────────
