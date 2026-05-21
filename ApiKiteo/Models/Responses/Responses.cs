@@ -410,6 +410,9 @@ public sealed record WksStatusBoardRow
     /// <summary>Tipo de circuito. Ejemplo: "CEA", "ZC", "ZD", "C2", "BodyT3".</summary>
     public string Tipo { get; init; } = string.Empty;
 
+    /// <summary>Cliente de producción. Ejemplo: "TBB", "BB".</summary>
+    public string Cliente { get; init; } = string.Empty;
+
     /// <summary>Cantidad de VINs programados para esta semana/tipo.</summary>
     public int VinCant { get; init; }
 

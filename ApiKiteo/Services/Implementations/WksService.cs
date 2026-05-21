@@ -14,7 +14,7 @@ public sealed class WksService : IWksService
 
     public WksService(IWksRepository repo, ILogger<WksService> logger)
     {
-        _repo   = repo;
+        _repo = repo;
         _logger = logger;
     }
 
@@ -25,8 +25,6 @@ public sealed class WksService : IWksService
     {
         try
         {
-            // El SP espera {"wkname": ["wk20_108_CEA", ...]}
-            // La propiedad se llama "wkname" (sin 's') — respetamos el contrato del SP.
             var jsonWkname = JsonSerializer.Serialize(new { wkname = request.Wknames });
 
             var rows = await _repo.GetStatusBoardAsync(jsonWkname, ct);
@@ -35,15 +33,14 @@ public sealed class WksService : IWksService
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new WksStatusBoardRow
                 {
-                    Wk           = d.GetStr("wk")           ?? string.Empty,
-                    Tipo         = d.GetStr("tipo")          ?? string.Empty,
-                    VinCant      = d.GetInt("VinCant")       ?? 0,
-                    KitsComp     = d.GetInt("KitsComp")      ?? 0,
-                    // El SP devuelve la columna como "kitCompFinal" (minúscula k)
-                    KitCompFinal = d.GetInt("kitCompFinal")  ?? 0,
-                    KitsCompTot  = d.GetInt("KitsCompTot")   ?? 0,
-                    // Porc viene como DECIMAL(10,2) desde SQL Server
-                    Porc         = GetDecimal(d.GetValueOrDefault("Porc"))
+                    Wk = d.GetStr("wk") ?? string.Empty,
+                    Tipo = d.GetStr("tipo") ?? string.Empty,
+                    Cliente = d.GetStr("cliente") ?? string.Empty,
+                    VinCant = d.GetInt("VinCant") ?? 0,
+                    KitsComp = d.GetInt("KitsComp") ?? 0,
+                    KitCompFinal = d.GetInt("kitCompFinal") ?? 0,
+                    KitsCompTot = d.GetInt("KitsCompTot") ?? 0,
+                    Porc = GetDecimal(d.GetValueOrDefault("Porc"))
                 })
                 .ToList();
 
@@ -59,26 +56,8 @@ public sealed class WksService : IWksService
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── POST /wks/cache/cleanup ───────────────────────────────────────────────
 
-    /// <summary>
-    /// Convierte el valor de Porc (puede llegar como decimal, double o string)
-    /// a decimal con 2 decimales. Devuelve 0 si es nulo o no parseable.
-    /// </summary>
-    private static decimal GetDecimal(object? val)
-    {
-        if (val is null || val is DBNull) return 0m;
-
-        return val switch
-        {
-            decimal d => Math.Round(d, 2),
-            double  v => Math.Round((decimal)v, 2),
-            float   f => Math.Round((decimal)f, 2),
-            _         => decimal.TryParse(val.ToString(), out var parsed)
-                             ? Math.Round(parsed, 2)
-                             : 0m
-        };
-    }
     public async Task<ServiceResult<WksCacheCleanupResponse>> CacheCleanupAsync(
         int semanasRetener, int horasCompletadas, CancellationToken ct = default)
     {
@@ -106,5 +85,21 @@ public sealed class WksService : IWksService
             return ServiceResult<WksCacheCleanupResponse>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static decimal GetDecimal(object? val)
+    {
+        if (val is null || val is DBNull) return 0m;
+        return val switch
+        {
+            decimal d => Math.Round(d, 2),
+            double v => Math.Round((decimal)v, 2),
+            float f => Math.Round((decimal)f, 2),
+            _ => decimal.TryParse(val.ToString(), out var parsed)
+                             ? Math.Round(parsed, 2)
+                             : 0m
+        };
     }
 }

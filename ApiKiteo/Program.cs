@@ -38,6 +38,8 @@ builder.Services
     .Bind(builder.Configuration.GetSection(LdapOptions.SectionName))
     .ValidateOnStart();
 
+
+
 // ─── Infrastructure ───────────────────────────────────────────────────────────
 
 // Singleton: la cadena de conexión se resuelve una sola vez

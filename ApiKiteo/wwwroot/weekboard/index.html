@@ -52,9 +52,20 @@ header{
 .cd{display:flex;align-items:center;gap:5px}
 .rw{width:20px;height:20px}
 .rw svg{transform:rotate(-90deg)}
-circle.rb{fill:none;stroke:rgba(255,255,255,0.1);stroke-width:2.5}
-circle.rf{fill:none;stroke:#22c55e;stroke-width:2.5;stroke-linecap:round;
-  stroke-dasharray:56.5;transition:stroke-dashoffset 1s linear}
+    circle.rb {
+        fill: none;
+        stroke: rgba(255,255,255,0.1);
+        stroke-width: 2.5px
+    }
+    circle.rf {
+        fill: none;
+        stroke: #22c55e;
+        stroke-width: 2.5px;
+        stroke-linecap: round;
+        stroke-dasharray: 56.5;
+        transition: stroke-dashoffset 1s linear
+    }
+
 
 /* ═══════════════════════════════════════════════════════════════
    SCROLL AREA
@@ -493,84 +504,66 @@ function showSkeleton(){
 // ════════════════════════════════════════════════════════════════
 // LOAD — fetch + agrupación
 // ════════════════════════════════════════════════════════════════
-async function load(first=false){
-  if(first) showSkeleton();
-  try{
-    // 1. obtener wknames de todos los combos
-    const semMap = new Map(); // wkname → estatus
-    await Promise.all(COMBOS.map(({cliente,tipo})=>
-      fetchSemanas(cliente,tipo).then(items=>{
-        items.sort((a,b)=>wkNum(b.clave)-wkNum(a.clave));
-        items.slice(0,ULTIMAS).forEach(item=>{
-          if(!semMap.has(item.clave)) semMap.set(item.clave,item.estatus);
-        });
-      })
-    ));
+    async function load(first = false) {
+        if (first) showSkeleton();
+        try {
+            // 1. obtener wknames de todos los combos
+            const semMap = new Map(); // wkname → estatus
+            await Promise.all(COMBOS.map(({ cliente, tipo }) =>
+                fetchSemanas(cliente, tipo).then(items => {
+                    items.sort((a, b) => wkNum(b.clave) - wkNum(a.clave));
+                    items.slice(0, ULTIMAS).forEach(item => {
+                        if (!semMap.has(item.clave)) semMap.set(item.clave, item.estatus);
+                    });
+                })
+            ));
 
-    if(!semMap.size){
-      document.getElementById('main').innerHTML='<div class="empty">No hay semanas activas.</div>';
-      tableBuilt=false; return;
-    }
+            if (!semMap.size) {
+                document.getElementById('main').innerHTML = '<div class="empty">No hay semanas activas.</div>';
+                tableBuilt = false; return;
+            }
 
-    // 2. status board
-    const rows = await fetchBoard([...semMap.keys()]);
-    if(!rows.length){
-      document.getElementById('main').innerHTML='<div class="empty">Sin datos del pizarrón.</div>';
-      tableBuilt=false; return;
-    }
+            // 2. status board
+            const rows = await fetchBoard([...semMap.keys()]);
+            if (!rows.length) {
+                document.getElementById('main').innerHTML = '<div class="empty">Sin datos del pizarrón.</div>';
+                tableBuilt = false; return;
+            }
 
-    // 3. agrupar por cliente (el combo original)
-    //    mapa de cliente: para saber qué cliente corresponde a cada wkname
-    const clienteDeWkname = new Map();
-    for(const {cliente,tipo} of COMBOS){
-      // reconstruimos qué combos mapearon a qué wknames
-      for(const [wkname] of semMap){
-        const parts = wkname.split('_');
-        const tipoPart = parts.slice(2).join('_')||'';
-        // si el tipo del combo coincide con alguna parte del tipo del wkname
-        if(tipoPart.split('/').some(t=>t===tipo) || tipoPart===tipo){
-          if(!clienteDeWkname.has(wkname)) clienteDeWkname.set(wkname,cliente);
+            // 3. agrupar filas por cliente — viene directamente del API (campo cliente)
+            //    Ya no es necesario inferir el cliente desde los combos.
+            const groupsMap = new Map();
+            rows.forEach(row => {
+                // El API devuelve row.cliente desde Kit_vin_wks_status_cache.
+                // Fallback a COMBOS[0] solo si el campo viene vacío (datos legacy).
+                const cliente = (row.cliente || row.Cliente || '').trim()
+                    || COMBOS[0]?.cliente || '';
+
+                if (!groupsMap.has(cliente)) groupsMap.set(cliente, []);
+                groupsMap.get(cliente).push(row);
+            });
+
+            // ordenar dentro de cada grupo: wk desc, luego tipo asc
+            groupsMap.forEach(arr => arr.sort((a, b) => {
+                const d = wkNum(b.wk || b.Wk) - wkNum(a.wk || a.Wk);
+                if (d !== 0) return d;
+                return (a.tipo || a.Tipo || '').localeCompare(b.tipo || b.Tipo || '');
+            }));
+
+            const groups = [...groupsMap.entries()].map(([cliente, rows]) => ({ cliente, rows }));
+
+            if (!tableBuilt) buildTable(groups);
+            else updateTable(groups);
+
+            document.getElementById('upd').textContent = now();
+        } catch (err) {
+            console.error('[Weekboard]', err);
+            if (!tableBuilt)
+                document.getElementById('main').innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+            // si la tabla ya existe, NO la borres — deja los datos anteriores visibles
         }
-      }
     }
 
-    // agrupar filas por cliente
-    const groupsMap = new Map();
-    rows.forEach(row=>{
-      const wk   = (row.wk||row.Wk||'').toLowerCase();
-      const tipo = row.tipo||row.Tipo||'';
-      // buscar el cliente original por wkname
-      let cliente='';
-      for(const [wkname,cli] of clienteDeWkname){
-        if(wkname.toLowerCase().startsWith(wk)){
-          cliente=cli; break;
-        }
-      }
-      if(!cliente) cliente = COMBOS[0]?.cliente||'';
-      if(!groupsMap.has(cliente)) groupsMap.set(cliente,[]);
-      groupsMap.get(cliente).push(row);
-    });
-
-    // ordenar dentro de cada grupo: wk desc, luego tipo asc
-    groupsMap.forEach(arr=>arr.sort((a,b)=>{
-      const d=wkNum(b.wk||b.Wk)-wkNum(a.wk||a.Wk);
-      if(d!==0) return d;
-      return (a.tipo||a.Tipo||'').localeCompare(b.tipo||b.Tipo||'');
-    }));
-
-    const groups=[...groupsMap.entries()].map(([cliente,rows])=>({cliente,rows}));
-
-    if(!tableBuilt) buildTable(groups);
-    else            updateTable(groups);
-
-    document.getElementById('upd').textContent=now();
-  } catch(err){
-    console.error('[Weekboard]',err);
-    if(!tableBuilt)
-      document.getElementById('main').innerHTML=`<div class="empty">Error: ${err.message}</div>`;
-    // si la tabla ya existe, NO la borres — deja los datos anteriores visibles
-  }
-}
 
 // ════════════════════════════════════════════════════════════════
 // COUNTDOWN + AUTO-REFRESH
