@@ -163,3 +163,9 @@ public sealed record WksCacheCleanupRequest(
     int SemanasRetener = 8,   // cuántas semanas retener en cache
     int HorasCompletadas = 48   // horas antes de borrar semanas al 100%
 );
+/// <summary>GET /api/liberacion/semanas y POST /api/liberacion/resumen y /detalle</summary>
+public sealed record LiberacionRequest(
+    [Required][MinLength(1)] List<string> Wknames,
+    [Required] string Username,
+    string Cliente = "TODOS"   // TODOS | TBB | BB
+);

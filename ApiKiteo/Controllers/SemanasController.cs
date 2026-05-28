@@ -6,7 +6,7 @@ using ApiKiteo.API.Services.Interfaces;
 namespace ApiKiteo.API.Controllers;
 
 /// <summary>
-/// Semanas — replica /semanas y /semanas_pendientes.
+/// Semanas — /semanas y /semanas_pendientes.
 /// </summary>
 [Produces("application/json")]
 public sealed class SemanasController : KiteoBaseController
@@ -36,8 +36,13 @@ public sealed class SemanasController : KiteoBaseController
     }
 
     /// <summary>
-    /// Obtiene semanas con su estatus (Pendiente / APROBADA).
-    /// filtro: 0 = todos (últimas 2 semanas), 1 = solo pendientes, 2 = solo aprobadas.
+    /// Obtiene semanas con su estatus desde Kit_vin_wk_header.
+    /// filtro:
+    ///   0 = todos los estatus (últimas 2 semanas, sin creado_por)
+    ///   1 = solo Pendiente (esperando aprobación de Scheduling)
+    ///   2 = solo APROBADA (aprobadas, listas para CrearDb)
+    ///   3 = solo creadas en DBMacro (creado_por IS NOT NULL, últimas 4 semanas)
+    ///   4 = solo PendienteCorte (esperando aprobación de Corte)
     /// </summary>
     [HttpGet("semanas_pendientes")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -46,9 +51,10 @@ public sealed class SemanasController : KiteoBaseController
         [FromQuery] byte filtro = 0,
         CancellationToken ct = default)
     {
-        if (filtro > 2)
+        if (filtro > 4)
             return BadRequest(ErrorResponse.Create(
-                "El parámetro 'filtro' debe ser 0 (todos), 1 (pendientes) o 2 (aprobadas).",
+                "El parámetro 'filtro' acepta: 0 (todos), 1 (Pendiente), " +
+                "2 (APROBADA), 3 (creadas en DBMacro), 4 (PendienteCorte).",
                 ErrorCodes.Kiteo400));
 
         var result = await _service.GetSemanasPendientesAsync(filtro, ct);

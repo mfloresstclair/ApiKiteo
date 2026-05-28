@@ -33,8 +33,9 @@ public sealed record SemanaItem
 public sealed record SemanaPendienteItem
 {
     public string Wkname { get; init; } = string.Empty;
-    public string? Estatus { get; init; }   // "Pendiente" | "APROBADA"
+    public string? Estatus { get; init; }   // "PendienteCorte" | "Pendiente" | "APROBADA"
     public string? AprobadoPor { get; init; }   // null si está pendiente
+    public string? CreadoPor { get; init; }     // null hasta que kit_vin_crea_db corre
 }
 
 // ─── Empleados ────────────────────────────────────────────────────────────────
@@ -539,4 +540,50 @@ public sealed record WksCacheCleanupResponse(
     int TotalEliminadas,
     int SemanasRetener,
     int HorasCompletadas
+);
+
+/// <summary>GET /api/liberacion/semanas</summary>
+public sealed record LiberacionSemanaItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Estatus { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+    public string? CreadoEn { get; init; }
+}
+
+/// <summary>POST /api/liberacion/resumen — det=0</summary>
+public sealed record LiberacionResumenItem
+{
+    public string Item { get; init; } = string.Empty;
+    public decimal Cant { get; init; }
+    public string Cliente { get; init; } = string.Empty;
+}
+
+/// <summary>POST /api/liberacion/detalle — det=1</summary>
+public sealed record LiberacionDetalleItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public string Item { get; init; } = string.Empty;
+    public decimal QtyOrdered { get; init; }
+    public string Cliente { get; init; } = string.Empty;
+    public string Vin { get; init; } = string.Empty;
+}
+
+public sealed record LiberacionSemanasResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<LiberacionSemanaItem> Resultados
+);
+
+public sealed record LiberacionResumenResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<LiberacionResumenItem> Resultados
+);
+
+public sealed record LiberacionDetalleResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<LiberacionDetalleItem> Resultados
 );

@@ -1,5 +1,6 @@
 using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Requests;
+using ApiKiteo.API.Models.Requests;
 using ApiKiteo.API.Models.Responses;
 
 namespace ApiKiteo.API.Services.Interfaces;
@@ -155,4 +156,15 @@ public interface IMacroService
         DateOnly? hasta,
         Stream output,
         CancellationToken ct = default);
+}
+public interface ILiberacionService
+{
+    Task<ServiceResult<LiberacionSemanasResponse>> GetSemanasAsync(
+        string estatus, string cliente, CancellationToken ct = default);
+
+    Task<ServiceResult<LiberacionResumenResponse>> GetResumenAsync(
+        LiberacionRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<LiberacionDetalleResponse>> GetDetalleAsync(
+        LiberacionRequest request, CancellationToken ct = default);
 }

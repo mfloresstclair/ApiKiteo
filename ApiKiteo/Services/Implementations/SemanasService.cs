@@ -26,7 +26,9 @@ public sealed class SemanasService : ISemanasService
             var rows = await _repo.GetSemanasAsync(cliente, tipo, ct);
             var list = rows.ToList();
 
-            _logger.LogInformation("GetSemanas | cliente={Cliente} tipo={Tipo} resultados={Count}", cliente, tipo, list.Count);
+            _logger.LogInformation(
+                "GetSemanas | cliente={Cliente} tipo={Tipo} resultados={Count}",
+                cliente, tipo, list.Count);
 
             if (list.Count == 0)
                 return ServiceResult<IReadOnlyList<SemanaItem>>.Fail(
@@ -43,9 +45,11 @@ public sealed class SemanasService : ISemanasService
                          ?? d.GetValueOrDefault("wkname")?.ToString()
                          ?? string.Empty;
 
-                var estatus = d.GetValueOrDefault("estatus")?.ToString();
-
-                return new SemanaItem { Clave = clave, Estatus = estatus };
+                return new SemanaItem
+                {
+                    Clave = clave,
+                    Estatus = d.GetValueOrDefault("estatus")?.ToString()
+                };
             }).ToList();
 
             return ServiceResult<IReadOnlyList<SemanaItem>>.Ok(result);
@@ -74,12 +78,15 @@ public sealed class SemanasService : ISemanasService
                 {
                     Wkname = d["wkname"]!.ToString()!,
                     Estatus = d.GetValueOrDefault("estatus")?.ToString(),
-                    AprobadoPor = d.GetValueOrDefault("aprobado_por")?.ToString()
+                    AprobadoPor = d.GetValueOrDefault("aprobado_por")?.ToString(),
+                    // filtro=3 devuelve creado_por; filtros 0-2 devuelven null
+                    CreadoPor = d.GetValueOrDefault("creado_por")?.ToString()
                 })
                 .ToList();
 
             _logger.LogInformation(
-                "GetSemanasPendientes | filtro={Filtro} resultados={Count}", filtro, result.Count);
+                "GetSemanasPendientes | filtro={Filtro} resultados={Count}",
+                filtro, result.Count);
 
             return ServiceResult<IReadOnlyList<SemanaPendienteItem>>.Ok(result);
         }

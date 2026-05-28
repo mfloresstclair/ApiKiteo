@@ -257,3 +257,30 @@ public interface IMacroRepository
         Func<IEnumerable<dynamic>, Task> process,
         CancellationToken ct = default);
 }
+
+public interface ILiberacionRepository
+{
+    /// <summary>
+    /// Semanas en estado PendienteCorte con su cliente (TBB/BB).
+    /// Ejecuta: Kit_vin_wks_semanas_liberacion
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetSemanasAsync(
+        string estatus = "PendienteCorte", string cliente = "TODOS",
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Resumen de material a liberar (det=0).
+    /// Ejecuta: Kit_vin_wks_liberacion @detail='0' @log=1
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetResumenAsync(
+        string jsonWknames, string username, string cliente,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Detalle completo de material a liberar (det=1).
+    /// Ejecuta: Kit_vin_wks_liberacion @detail='1' @log=0 (sin doble log)
+    /// </summary>
+    Task<IEnumerable<dynamic>> GetDetalleAsync(
+        string jsonWknames, string username, string cliente,
+        CancellationToken ct = default);
+}

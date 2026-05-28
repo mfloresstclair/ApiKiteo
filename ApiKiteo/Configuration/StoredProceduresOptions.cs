@@ -50,4 +50,7 @@ public sealed class StoredProceduresOptions
     public string BuscarCircuito { get; init; } = string.Empty;
     public string PreviewSemana { get; init; } = string.Empty;
     public string CrearDb { get; init; } = string.Empty;
+    // ── liberacion ─────────────────────────────────────────────────────────────────
+    public string LiberacionSemanas { get; init; } = string.Empty;
+    public string Liberacion { get; init; } = string.Empty;
 }
