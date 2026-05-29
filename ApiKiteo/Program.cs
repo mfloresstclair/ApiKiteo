@@ -59,6 +59,7 @@ builder.Services.AddScoped<IAdminRolesRepository, AdminRolesRepository>();
 builder.Services.AddScoped<IMandarFinalRepository, MandarFinalRepository>();
 builder.Services.AddScoped<IWksRepository, WksRepository>();
 builder.Services.AddScoped<IMacroRepository, MacroRepository>();
+builder.Services.AddScoped<ILiberacionRepository, LiberacionRepository>();
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISemanasService, SemanasService>();
@@ -71,6 +72,7 @@ builder.Services.AddScoped<IMandarFinalService, MandarFinalService>();
 builder.Services.AddScoped<IWksService, WksService>();
 builder.Services.AddScoped<IMacroService, MacroService>();
 builder.Services.AddSingleton<MetricsCollector>();
+builder.Services.AddScoped<ILiberacionService, LiberacionService>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()
