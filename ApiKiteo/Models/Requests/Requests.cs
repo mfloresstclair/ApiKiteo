@@ -169,3 +169,10 @@ public sealed record LiberacionRequest(
     [Required] string Username,
     string Cliente = "TODOS"   // TODOS | TBB | BB
 );
+/// <summary>POST /api/liberacion/corte/ingresar</summary>
+public sealed record CorteIngresarRequest(
+    [Required] int LoteId,
+    [Required] string Wkname,
+    [Required] string Fechacorte,   // ej: "262026"
+    [Required] string Username
+);

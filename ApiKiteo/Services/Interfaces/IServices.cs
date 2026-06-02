@@ -1,6 +1,5 @@
 using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Requests;
-using ApiKiteo.API.Models.Requests;
 using ApiKiteo.API.Models.Responses;
 
 namespace ApiKiteo.API.Services.Interfaces;
@@ -162,9 +161,26 @@ public interface ILiberacionService
     Task<ServiceResult<LiberacionSemanasResponse>> GetSemanasAsync(
         string estatus, string cliente, CancellationToken ct = default);
 
+    /// <summary>
+    /// Genera el resumen de material y crea el lote en Kit_vin_liberacion.
+    /// El LoteId devuelto es el que va al Excel para que Corte lo use.
+    /// </summary>
     Task<ServiceResult<LiberacionResumenResponse>> GetResumenAsync(
         LiberacionRequest request, CancellationToken ct = default);
 
     Task<ServiceResult<LiberacionDetalleResponse>> GetDetalleAsync(
         LiberacionRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Busca un lote por ID — usado por Corte para ver sus semanas pendientes.
+    /// </summary>
+    Task<ServiceResult<LiberacionGetResponse>> GetLoteAsync(
+        int loteId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Corte ingresa la fechacorte para una semana de su lote.
+    /// Cuando todos los wknames del lote tienen fechacorte → pasan a PENDIENTE.
+    /// </summary>
+    Task<ServiceResult<CorteIngresarResponse>> IngresarCorteAsync(
+        CorteIngresarRequest request, CancellationToken ct = default);
 }

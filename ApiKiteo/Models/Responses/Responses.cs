@@ -578,12 +578,49 @@ public sealed record LiberacionSemanasResponse(
 
 public sealed record LiberacionResumenResponse(
     bool Ok,
+    int LoteId,     // ID del lote creado
     int Total,
     IReadOnlyList<LiberacionResumenItem> Resultados
 );
 
 public sealed record LiberacionDetalleResponse(
     bool Ok,
+    int LoteId, // ID del lote creado
     int Total,
     IReadOnlyList<LiberacionDetalleItem> Resultados
+);
+/// <summary>RS1 de Kit_vin_liberacion_get — resumen del lote.</summary>
+public sealed record LoteResumenItem
+{
+    public int LoteId { get; init; }
+    public string LiberadoPor { get; init; } = string.Empty;
+    public string? LiberadoEn { get; init; }
+    public int TotalSemanas { get; init; }
+    public int Pendientes { get; init; }   // semanas sin fechacorte
+    public string Estatus { get; init; } = string.Empty; // PENDIENTE | PENDIENTECORTE
+}
+
+/// <summary>RS2 de Kit_vin_liberacion_get — semanas del lote.</summary>
+public sealed record WkLoteItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Estatus { get; init; } = string.Empty;
+    public string? Fechacorte { get; init; }
+    public bool Ingresado { get; init; }   // true si fechacorte IS NOT NULL
+}
+
+public sealed record LiberacionGetResponse(
+    bool Ok,
+    LoteResumenItem? Lote,
+    IReadOnlyList<WkLoteItem> Semanas
+);
+
+/// <summary>POST /api/liberacion/corte/ingresar</summary>
+public sealed record CorteIngresarResponse(
+    bool Ok,
+    string Mensaje,
+    int LoteId,
+    string Wkname,
+    string Fechacorte,
+    int SemanasPendientes   // cuántas faltan de ingresar en el lote
 );

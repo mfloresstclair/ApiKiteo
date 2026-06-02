@@ -38,8 +38,8 @@ public sealed class LiberacionRepository : ILiberacionRepository
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-
-        // @log=1 — escribe Boss_transactions (primera llamada)
+        // El SP valida duplicados y registra en Kit_vin_liberacion.
+        // Timeout generoso — incluye la carga del lado TBB (CombinedOverlays).
         return await conn.QueryAsync(
             _sp.Liberacion,
             new { username, jsonwks = jsonWknames, detail = "0", cliente },
@@ -53,12 +53,44 @@ public sealed class LiberacionRepository : ILiberacionRepository
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-
-        // @log=0 — NO escribe Boss_transactions (segunda llamada, ya se registró en resumen)
+        // @detail='1' — el lote ya fue creado por GetResumenAsync.
+        // Ambas llamadas registran en Boss_transactions (doble log aceptado).
         return await conn.QueryAsync(
             _sp.Liberacion,
             new { username, jsonwks = jsonWknames, detail = "1", cliente },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 120);
+    }
+
+    /// <inheritdoc/>
+    public async Task<(IEnumerable<dynamic> Lote, IEnumerable<dynamic> Semanas)> GetLoteAsync(
+        int loteId, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+
+        // 2 result sets — GridReader requerido
+        using var grid = await conn.QueryMultipleAsync(
+            _sp.LiberacionGet,
+            new { lote_id = loteId },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+
+        var lote = await grid.ReadAsync<dynamic>();
+        var semanas = await grid.ReadAsync<dynamic>();
+
+        return (lote, semanas);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> IngresarCorteAsync(
+        int loteId, string wkname, string fechacorte, string username,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.CorteIngresar,
+            new { lote_id = loteId, wkname, fechacorte, username },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
     }
 }

@@ -53,4 +53,6 @@ public sealed class StoredProceduresOptions
     // ── liberacion ─────────────────────────────────────────────────────────────────
     public string LiberacionSemanas { get; init; } = string.Empty;
     public string Liberacion { get; init; } = string.Empty;
+    public string LiberacionGet { get; init; } = string.Empty;  // Kit_vin_liberacion_get
+    public string CorteIngresar { get; init; } = string.Empty;  // Kit_vin_corte_ingresar
 }
