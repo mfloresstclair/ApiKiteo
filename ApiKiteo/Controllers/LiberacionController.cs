@@ -9,13 +9,14 @@ namespace ApiKiteo.API.Controllers;
 /// Liberación de material para Corte.
 ///
 /// Flujo completo:
-///   1. Scheduling carga wknames → estatus: PendienteCorte
-///   2. POST /api/liberacion/resumen → crea lote_id → va al Excel para Corte
-///   3. POST /api/liberacion/detalle → det=1 para CSV adjunto del email
-///   4. Corte busca su lote: GET /api/liberacion/{loteId}
-///   5. Corte ingresa fechacorte: POST /api/liberacion/corte/ingresar
-///      → cuando todos ingresaron → wknames pasan a "Pendiente"
-///   6. Scheduling aprueba → "APROBADA" → CrearDb
+///   1. Scheduling selecciona semanas en PendienteCorte
+///   2. POST /api/liberacion/crear  → crea lote, devuelve lote_id (va al Excel)
+///   3. POST /api/liberacion        → obtiene resumen + detalle para email/CSV
+///   4. Corte recibe Excel con lote_id
+///   5. GET  /api/liberacion/{loteId}           → Corte ve sus semanas
+///   6. POST /api/liberacion/corte/ingresar     → Corte ingresa fechacorte por semana
+///      → cuando todos ingresaron → automático a "Pendiente"
+///   7. Scheduling aprueba → "APROBADA" → CrearDb
 /// </summary>
 [Route("api/liberacion")]
 [Produces("application/json")]
@@ -26,10 +27,8 @@ public sealed class LiberacionController : KiteoBaseController
     public LiberacionController(ILiberacionService service) => _service = service;
 
     /// <summary>
-    /// Semanas por estatus y cliente — para el selector del form.
+    /// Semanas por estatus y cliente para el selector del form.
     /// </summary>
-    /// <param name="estatus">PendienteCorte (default) | Pendiente | APROBADA</param>
-    /// <param name="cliente">TODOS (default) | TBB | BB</param>
     [HttpGet("semanas")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -50,16 +49,36 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
-    /// Resumen de material a liberar (det=0).
-    /// Crea un lote en Kit_vin_liberacion y asigna lote_id a las semanas.
-    /// El LoteId del response es el número que va en el Excel para Corte.
-    /// Devuelve 409 si alguna semana ya tiene una liberación activa.
+    /// Crea el lote de liberación y linkea las semanas seleccionadas.
+    /// El lote_id del response es el número que va en el Excel para Corte.
+    /// Si sobreescribir=false y hay lote activo → 400 code=DUPLICADA.
+    /// El WinForm detecta ese code y pregunta si desea sobreescribir.
     /// </summary>
-    [HttpPost("resumen")]
+    [HttpPost("crear")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> GetResumen(
+    public async Task<IActionResult> CrearLote(
+        [FromBody] LiberacionCrearRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.CrearLoteAsync(request, ct));
+    }
+
+    /// <summary>
+    /// Devuelve el material a liberar — resumen (det=0) Y detalle (det=1) en una sola llamada.
+    /// El WinForms usa el detalle para el CSV adjunto del email.
+    /// Llamar DESPUÉS de /crear para asegurar que el lote ya existe.
+    /// </summary>
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetMaterial(
         [FromBody] LiberacionRequest request,
         CancellationToken ct)
     {
@@ -73,39 +92,13 @@ public sealed class LiberacionController : KiteoBaseController
             return BadRequest(ErrorResponse.Create(
                 "El campo 'cliente' debe ser TODOS, TBB o BB.", ErrorCodes.Kiteo400));
 
-        return FromResult(await _service.GetResumenAsync(request, ct));
+        return FromResult(await _service.GetMaterialAsync(request, ct));
     }
 
     /// <summary>
-    /// Detalle completo (det=1) — todas las filas para CSV adjunto del email.
-    /// El WinForms pagina localmente con VirtualMode.
-    /// No duplica la creación del lote — usar siempre DESPUÉS de /resumen.
+    /// Busca un lote por ID — Corte usa el número del Excel.
+    /// Devuelve resumen del lote + semanas con su fechacorte.
     /// </summary>
-    [HttpPost("detalle")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetDetalle(
-        [FromBody] LiberacionRequest request,
-        CancellationToken ct)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        if (string.IsNullOrWhiteSpace(request.Username))
-            return BadRequest(ErrorResponse.Create(
-                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
-
-        if (request.Cliente is not ("TODOS" or "TBB" or "BB"))
-            return BadRequest(ErrorResponse.Create(
-                "El campo 'cliente' debe ser TODOS, TBB o BB.", ErrorCodes.Kiteo400));
-
-        return FromResult(await _service.GetDetalleAsync(request, ct));
-    }
-
-    /// <summary>
-    /// Busca un lote por ID — Corte lo usa para ver sus semanas pendientes.
-    /// Devuelve resumen del lote + lista de semanas con su fechacorte.
-    /// </summary>
-    /// <param name="loteId">ID del lote (del Excel que recibió Corte)</param>
     [HttpGet("{loteId:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -121,9 +114,9 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
-    /// Corte ingresa la fechacorte para una semana de su lote.
-    /// Cuando TODOS los wknames del lote tienen fechacorte,
-    /// el sistema los mueve automáticamente a estatus "Pendiente".
+    /// Corte ingresa fechacorte para una semana de su lote.
+    /// Cuando TODOS los wknames tienen fechacorte → pasan a "Pendiente" automáticamente.
+    /// semanas_pendientes=0 en el response indica que el lote está completo.
     /// </summary>
     [HttpPost("corte/ingresar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -153,4 +146,24 @@ public sealed class LiberacionController : KiteoBaseController
 
         return FromResult(await _service.IngresarCorteAsync(request, ct));
     }
+
+    /// <summary>
+    /// Lista lotes de la semana actual y la anterior.
+    /// Usado por el panel izquierdo del form de Corte.
+    /// </summary>
+    /// <param name="cliente">TODOS (default) | TBB | BB</param>
+    [HttpGet("list")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LiberacionList(
+        [FromQuery] string cliente = "TODOS",
+        CancellationToken ct = default)
+    {
+        if (cliente is not ("TODOS" or "TBB" or "BB"))
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'cliente' debe ser TODOS, TBB o BB.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.LiberacionListAsync(cliente, ct));
+    }
+
 }

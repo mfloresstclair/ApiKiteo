@@ -259,10 +259,12 @@ public interface IMacroRepository
 }
 
 
+
+
 public interface ILiberacionRepository
 {
     /// <summary>
-    /// Semanas en estado PendienteCorte con su cliente (TBB/BB).
+    /// Semanas por estatus y cliente para el selector del form.
     /// Ejecuta: Kit_vin_wks_semanas_liberacion
     /// </summary>
     Task<IEnumerable<dynamic>> GetSemanasAsync(
@@ -270,26 +272,28 @@ public interface ILiberacionRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Resumen de material (det=0). Registra en Kit_vin_liberacion y
-    /// actualiza Kit_vin_wk_header.lote_id. Devuelve lote_id en cada fila.
-    /// Si una semana ya está liberada → devuelve fila con http_status=400.
-    /// Ejecuta: Kit_vin_wks_liberacion @detail='0'
+    /// Crea un lote de liberación y linkea las semanas.
+    /// Con sobreescribir=false devuelve 400 si hay lote activo.
+    /// Con sobreescribir=true elimina el lote anterior y crea uno nuevo.
+    /// Ejecuta: Kit_vin_liberacion_crear
     /// </summary>
-    Task<IEnumerable<dynamic>> GetResumenAsync(
+    Task<IEnumerable<dynamic>> CrearLoteAsync(
+        string jsonWknames, string username, bool sobreescribir,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Devuelve SIEMPRE 2 result sets via GridReader:
+    ///   RS1: resumen  — item | Cant | cliente
+    ///   RS2: detalle  — wkname | tipo | item | qty_ordered | cliente | vin
+    /// Sin lote_id — la creación del lote es responsabilidad de CrearLoteAsync.
+    /// Ejecuta: Kit_vin_wks_liberacion
+    /// </summary>
+    Task<(IEnumerable<dynamic> Resumen, IEnumerable<dynamic> Detalle)> GetMaterialAsync(
         string jsonWknames, string username, string cliente,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Detalle completo (det=1). Sin log extra — Kit_vin_wks_liberacion @detail='1'.
-    /// El lote ya fue creado por /resumen. Devuelve lote_id en cada fila.
-    /// </summary>
-    Task<IEnumerable<dynamic>> GetDetalleAsync(
-        string jsonWknames, string username, string cliente,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Busca un lote de liberación y sus semanas.
-    /// Devuelve 2 result sets via GridReader:
+    /// Busca un lote por ID — 2 result sets via GridReader.
     ///   RS1: LoteData (resumen del lote)
     ///   RS2: WkData   (semanas con fechacorte e ingresado flag)
     /// Ejecuta: Kit_vin_liberacion_get
@@ -298,12 +302,18 @@ public interface ILiberacionRepository
         int loteId, CancellationToken ct = default);
 
     /// <summary>
-    /// Corte ingresa fechacorte para una semana dentro de un lote.
-    /// Cuando todas las semanas del lote tienen fechacorte → estatus = PENDIENTE.
+    /// Corte ingresa fechacorte para una semana.
+    /// Cuando todos tienen fechacorte → estatus = PENDIENTE automáticamente.
     /// Ejecuta: Kit_vin_corte_ingresar
     /// </summary>
     Task<IEnumerable<dynamic>> IngresarCorteAsync(
         int loteId, string wkname, string fechacorte, string username,
         CancellationToken ct = default);
-}
 
+    /// <summary>
+    /// Lista lotes de la semana actual y la anterior.
+    /// Ejecuta: Kit_vin_liberacion_list
+    /// </summary>
+    Task<IEnumerable<dynamic>> LiberacionListAsync(
+        string cliente = "TODOS", CancellationToken ct = default);
+}

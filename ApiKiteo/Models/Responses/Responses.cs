@@ -576,28 +576,19 @@ public sealed record LiberacionSemanasResponse(
     IReadOnlyList<LiberacionSemanaItem> Resultados
 );
 
-public sealed record LiberacionResumenResponse(
-    bool Ok,
-    int LoteId,     // ID del lote creado
-    int Total,
-    IReadOnlyList<LiberacionResumenItem> Resultados
-);
 
-public sealed record LiberacionDetalleResponse(
-    bool Ok,
-    int LoteId, // ID del lote creado
-    int Total,
-    IReadOnlyList<LiberacionDetalleItem> Resultados
-);
+
+
 /// <summary>RS1 de Kit_vin_liberacion_get — resumen del lote.</summary>
 public sealed record LoteResumenItem
 {
     public int LoteId { get; init; }
     public string LiberadoPor { get; init; } = string.Empty;
     public string? LiberadoEn { get; init; }
+    public string Cliente { get; init; } = string.Empty;   
     public int TotalSemanas { get; init; }
-    public int Pendientes { get; init; }   // semanas sin fechacorte
-    public string Estatus { get; init; } = string.Empty; // PENDIENTE | PENDIENTECORTE
+    public int Pendientes { get; init; }
+    public string Estatus { get; init; } = string.Empty;
 }
 
 /// <summary>RS2 de Kit_vin_liberacion_get — semanas del lote.</summary>
@@ -606,7 +597,8 @@ public sealed record WkLoteItem
     public string Wkname { get; init; } = string.Empty;
     public string Estatus { get; init; } = string.Empty;
     public string? Fechacorte { get; init; }
-    public bool Ingresado { get; init; }   // true si fechacorte IS NOT NULL
+    public string Cliente { get; init; } = string.Empty;   // ← NUEVO
+    public bool Ingresado { get; init; }
 }
 
 public sealed record LiberacionGetResponse(
@@ -623,4 +615,31 @@ public sealed record CorteIngresarResponse(
     string Wkname,
     string Fechacorte,
     int SemanasPendientes   // cuántas faltan de ingresar en el lote
+);
+/// POST /api/liberacion/crear
+/// loteId = 0 si http_status != 200.
+/// </summary>
+public sealed record LiberacionCrearResponse(
+    bool Ok,
+    string Code,       // OK | DUPLICADA | PARAM_INVALIDO | ERROR
+    string Mensaje,
+    int LoteId      // 0 si error
+);
+/// POST /api/liberacion — material de liberación.
+/// Resumen: item | Cant | cliente
+/// Detalle: wkname | tipo | item | qty_ordered | cliente | vin
+/// </summary>
+public sealed record LiberacionMaterialResponse(
+    bool Ok,
+    int TotalResumen,
+    int TotalDetalle,
+    IReadOnlyList<LiberacionResumenItem> Resumen,
+    IReadOnlyList<LiberacionDetalleItem> Detalle
+);
+
+// NUEVO — respuesta de GET /api/liberacion/list:
+public sealed record LiberacionListResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<LoteResumenItem> Resultados
 );

@@ -176,3 +176,13 @@ public sealed record CorteIngresarRequest(
     [Required] string Fechacorte,   // ej: "262026"
     [Required] string Username
 );
+/// <summary>
+/// POST /api/liberacion/crear
+/// Si sobreescribir=false y hay lote activo → SP devuelve 400 DUPLICADA.
+/// El WinForm pregunta al usuario y re-llama con sobreescribir=true.
+/// </summary>
+public sealed record LiberacionCrearRequest(
+    [Required] string Username,
+    [Required] List<string> Wknames,
+    bool Sobreescribir = false
+);

@@ -162,25 +162,26 @@ public interface ILiberacionService
         string estatus, string cliente, CancellationToken ct = default);
 
     /// <summary>
-    /// Genera el resumen de material y crea el lote en Kit_vin_liberacion.
-    /// El LoteId devuelto es el que va al Excel para que Corte lo use.
+    /// Crea el lote de liberación en BD y linkea las semanas.
+    /// Si sobreescribir=false y hay duplicado → Fail(400, "DUPLICADA").
+    /// El WinForm detecta code="DUPLICADA" y pregunta si desea sobreescribir.
     /// </summary>
-    Task<ServiceResult<LiberacionResumenResponse>> GetResumenAsync(
-        LiberacionRequest request, CancellationToken ct = default);
-
-    Task<ServiceResult<LiberacionDetalleResponse>> GetDetalleAsync(
-        LiberacionRequest request, CancellationToken ct = default);
+    Task<ServiceResult<LiberacionCrearResponse>> CrearLoteAsync(
+        LiberacionCrearRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Busca un lote por ID — usado por Corte para ver sus semanas pendientes.
+    /// Devuelve resumen Y detalle del material a liberar en una sola llamada.
+    /// Usa GridReader — Kit_vin_wks_liberacion siempre devuelve 2 result sets.
     /// </summary>
+    Task<ServiceResult<LiberacionMaterialResponse>> GetMaterialAsync(
+        LiberacionRequest request, CancellationToken ct = default);
+
     Task<ServiceResult<LiberacionGetResponse>> GetLoteAsync(
         int loteId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Corte ingresa la fechacorte para una semana de su lote.
-    /// Cuando todos los wknames del lote tienen fechacorte → pasan a PENDIENTE.
-    /// </summary>
     Task<ServiceResult<CorteIngresarResponse>> IngresarCorteAsync(
         CorteIngresarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
+        string cliente, CancellationToken ct = default);
 }

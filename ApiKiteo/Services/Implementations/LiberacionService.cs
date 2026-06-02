@@ -50,36 +50,68 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
-    // ── POST /api/liberacion/resumen ──────────────────────────────────────────
+    // ── POST /api/liberacion/crear ────────────────────────────────────────────
 
-    public async Task<ServiceResult<LiberacionResumenResponse>> GetResumenAsync(
+    public async Task<ServiceResult<LiberacionCrearResponse>> CrearLoteAsync(
+        LiberacionCrearRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Liberación crear | usuario={U} semanas={N} sobreescribir={S}",
+                request.Username, request.Wknames.Count, request.Sobreescribir);
+
+            var json = JsonSerializer.Serialize(new { wkname = request.Wknames });
+            var rows = await _repo.CrearLoteAsync(json, request.Username, request.Sobreescribir, ct);
+
+            var primera = rows.Select(r => (IDictionary<string, object?>)r).FirstOrDefault();
+            if (primera is null)
+                return ServiceResult<LiberacionCrearResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? string.Empty;
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var loteId = Convert.ToInt32(primera.GetValueOrDefault("lote_id") ?? 0);
+
+            if (httpStatus != 200)
+            {
+                _logger.LogWarning(
+                    "Liberación crear {Code} | usuario={U}", code, request.Username);
+                return ServiceResult<LiberacionCrearResponse>.Fail(httpStatus, mensaje, code);
+            }
+
+            _logger.LogInformation(
+                "Liberación crear OK | lote_id={L} usuario={U}", loteId, request.Username);
+
+            return ServiceResult<LiberacionCrearResponse>.Ok(
+                new LiberacionCrearResponse(true, code, mensaje, loteId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error Liberación crear usuario={U}", request.Username);
+            return ServiceResult<LiberacionCrearResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── POST /api/liberacion ──────────────────────────────────────────────────
+
+    public async Task<ServiceResult<LiberacionMaterialResponse>> GetMaterialAsync(
         LiberacionRequest request, CancellationToken ct = default)
     {
         try
         {
             _logger.LogInformation(
-                "Liberación resumen | usuario={U} semanas={N} cliente={C}",
+                "Liberación material | usuario={U} semanas={N} cliente={C}",
                 request.Username, request.Wknames.Count, request.Cliente);
 
             var json = JsonSerializer.Serialize(new { wkname = request.Wknames });
-            var rows = await _repo.GetResumenAsync(json, request.Username, request.Cliente, ct);
+            var (resumenRows, detalleRows) = await _repo.GetMaterialAsync(
+                json, request.Username, request.Cliente, ct);
 
-            var lista = rows.Select(r => (IDictionary<string, object?>)r).ToList();
-
-            // El SP puede devolver una fila de error {http_status=400} si hay duplicado
-            var primera = lista.FirstOrDefault();
-            if (primera is not null && primera.ContainsKey("http_status"))
-            {
-                var status = Convert.ToInt32(primera["http_status"] ?? 500);
-                var mensaje = primera.GetValueOrDefault("message")?.ToString()
-                              ?? "Error en el SP.";
-                return ServiceResult<LiberacionResumenResponse>.Fail(status, mensaje, "LIB_ERR");
-            }
-
-            // Extraer lote_id del primer row (el SP lo repite en cada fila)
-            var loteId = Convert.ToInt32(primera?.GetValueOrDefault("lote_id") ?? 0);
-
-            var resultados = lista
+            var resumen = resumenRows
+                .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new LiberacionResumenItem
                 {
                     Item = d.GetStr("item") ?? string.Empty,
@@ -88,50 +120,8 @@ public sealed class LiberacionService : ILiberacionService
                 })
                 .ToList();
 
-            _logger.LogInformation(
-                "Liberación resumen OK | lote_id={L} items={N}",
-                loteId, resultados.Count);
-
-            return ServiceResult<LiberacionResumenResponse>.Ok(
-                new LiberacionResumenResponse(true, loteId, resultados.Count, resultados));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error Liberación resumen usuario={U}", request.Username);
-            return ServiceResult<LiberacionResumenResponse>.Fail(
-                500, "Error interno.", ErrorCodes.Kiteo500);
-        }
-    }
-
-    // ── POST /api/liberacion/detalle ──────────────────────────────────────────
-
-    public async Task<ServiceResult<LiberacionDetalleResponse>> GetDetalleAsync(
-        LiberacionRequest request, CancellationToken ct = default)
-    {
-        try
-        {
-            _logger.LogInformation(
-                "Liberación detalle | usuario={U} semanas={N} cliente={C}",
-                request.Username, request.Wknames.Count, request.Cliente);
-
-            var json = JsonSerializer.Serialize(new { wkname = request.Wknames });
-            var rows = await _repo.GetDetalleAsync(json, request.Username, request.Cliente, ct);
-
-            var lista = rows.Select(r => (IDictionary<string, object?>)r).ToList();
-
-            // Verificar error del SP
-            var primera = lista.FirstOrDefault();
-            if (primera is not null && primera.ContainsKey("http_status"))
-            {
-                var status = Convert.ToInt32(primera["http_status"] ?? 500);
-                var mensaje = primera.GetValueOrDefault("message")?.ToString() ?? "Error en el SP.";
-                return ServiceResult<LiberacionDetalleResponse>.Fail(status, mensaje, "LIB_ERR");
-            }
-
-            var loteId = Convert.ToInt32(primera?.GetValueOrDefault("lote_id") ?? 0);
-
-            // Devuelve todo — el WinForms pagina localmente con VirtualMode
-            var resultados = lista
+            var detalle = detalleRows
+                .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new LiberacionDetalleItem
                 {
                     Wkname = d.GetStr("wkname") ?? string.Empty,
@@ -143,13 +133,18 @@ public sealed class LiberacionService : ILiberacionService
                 })
                 .ToList();
 
-            return ServiceResult<LiberacionDetalleResponse>.Ok(
-                new LiberacionDetalleResponse(true, loteId, resultados.Count, resultados));
+            return ServiceResult<LiberacionMaterialResponse>.Ok(
+                new LiberacionMaterialResponse(
+                    Ok: true,
+                    TotalResumen: resumen.Count,
+                    TotalDetalle: detalle.Count,
+                    Resumen: resumen,
+                    Detalle: detalle));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error Liberación detalle usuario={U}", request.Username);
-            return ServiceResult<LiberacionDetalleResponse>.Fail(
+            _logger.LogError(ex, "Error Liberación material usuario={U}", request.Username);
+            return ServiceResult<LiberacionMaterialResponse>.Fail(
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }
     }
@@ -163,15 +158,12 @@ public sealed class LiberacionService : ILiberacionService
         {
             var (loteRows, semanaRows) = await _repo.GetLoteAsync(loteId, ct);
 
-            // RS1: verificar 404
             var loteLista = loteRows.Select(r => (IDictionary<string, object?>)r).ToList();
             var primeraFila = loteLista.FirstOrDefault();
 
             if (primeraFila is not null && primeraFila.ContainsKey("http_status"))
-            {
                 return ServiceResult<LiberacionGetResponse>.Fail(
                     404, "Liberación no encontrada.", "LIB_404");
-            }
 
             LoteResumenItem? lote = null;
             if (primeraFila is not null)
@@ -181,13 +173,13 @@ public sealed class LiberacionService : ILiberacionService
                     LoteId = Convert.ToInt32(primeraFila.GetValueOrDefault("lote_id") ?? 0),
                     LiberadoPor = primeraFila.GetStr("liberado_por") ?? string.Empty,
                     LiberadoEn = primeraFila.GetValueOrDefault("liberado_en")?.ToString(),
+                    Cliente = primeraFila.GetStr("cliente") ?? string.Empty,
                     TotalSemanas = Convert.ToInt32(primeraFila.GetValueOrDefault("total_semanas") ?? 0),
                     Pendientes = Convert.ToInt32(primeraFila.GetValueOrDefault("pendientes") ?? 0),
                     Estatus = primeraFila.GetStr("estatus") ?? string.Empty
                 };
             }
 
-            // RS2: semanas del lote
             var semanas = semanaRows
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new WkLoteItem
@@ -195,6 +187,7 @@ public sealed class LiberacionService : ILiberacionService
                     Wkname = d.GetStr("wkname") ?? string.Empty,
                     Estatus = d.GetStr("estatus") ?? string.Empty,
                     Fechacorte = d.GetStr("fechacorte"),
+                    Cliente = d.GetStr("cliente") ?? string.Empty,
                     Ingresado = Convert.ToInt32(d.GetValueOrDefault("ingresado") ?? 0) == 1
                 })
                 .ToList();
@@ -225,8 +218,7 @@ public sealed class LiberacionService : ILiberacionService
                 request.LoteId, request.Wkname,
                 request.Fechacorte, request.Username, ct);
 
-            var lista = rows.Select(r => (IDictionary<string, object?>)r).ToList();
-            var primera = lista.FirstOrDefault();
+            var primera = rows.Select(r => (IDictionary<string, object?>)r).FirstOrDefault();
             if (primera is null)
                 return ServiceResult<CorteIngresarResponse>.Fail(
                     500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
@@ -256,6 +248,40 @@ public sealed class LiberacionService : ILiberacionService
         {
             _logger.LogError(ex, "Error CorteIngresar lote={L}", request.LoteId);
             return ServiceResult<CorteIngresarResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+
+    // ── GET /api/liberacion/list ──────────────────────────────────────────────
+
+    public async Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
+        string cliente, CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _repo.LiberacionListAsync(cliente, ct);
+            var resultados = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new LoteResumenItem
+                {
+                    LoteId = Convert.ToInt32(d.GetValueOrDefault("lote_id") ?? 0),
+                    LiberadoPor = d.GetStr("liberado_por") ?? string.Empty,
+                    LiberadoEn = d.GetValueOrDefault("liberado_en")?.ToString(),
+                    Cliente = d.GetStr("cliente") ?? string.Empty,
+                    TotalSemanas = Convert.ToInt32(d.GetValueOrDefault("total_semanas") ?? 0),
+                    Pendientes = Convert.ToInt32(d.GetValueOrDefault("pendientes") ?? 0),
+                    Estatus = d.GetStr("estatus") ?? string.Empty
+                })
+                .ToList();
+
+            return ServiceResult<LiberacionListResponse>.Ok(
+                new LiberacionListResponse(true, resultados.Count, resultados));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error LiberacionList cliente={C}", cliente);
+            return ServiceResult<LiberacionListResponse>.Fail(
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }
     }

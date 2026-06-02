@@ -33,33 +33,37 @@ public sealed class LiberacionRepository : ILiberacionRepository
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<dynamic>> GetResumenAsync(
-        string jsonWknames, string username, string cliente,
+    public async Task<IEnumerable<dynamic>> CrearLoteAsync(
+        string jsonWknames, string username, bool sobreescribir,
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-        // El SP valida duplicados y registra en Kit_vin_liberacion.
-        // Timeout generoso — incluye la carga del lado TBB (CombinedOverlays).
         return await conn.QueryAsync(
-            _sp.Liberacion,
-            new { username, jsonwks = jsonWknames, detail = "0", cliente },
+            _sp.LiberacionCrear,
+            new { username, jsonwks = jsonWknames, sobreescribir },
             commandType: System.Data.CommandType.StoredProcedure,
-            commandTimeout: 120);
+            commandTimeout: 30);
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<dynamic>> GetDetalleAsync(
+    public async Task<(IEnumerable<dynamic> Resumen, IEnumerable<dynamic> Detalle)> GetMaterialAsync(
         string jsonWknames, string username, string cliente,
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-        // @detail='1' — el lote ya fue creado por GetResumenAsync.
-        // Ambas llamadas registran en Boss_transactions (doble log aceptado).
-        return await conn.QueryAsync(
-            _sp.Liberacion,
-            new { username, jsonwks = jsonWknames, detail = "1", cliente },
+
+        // El SP ahora SIEMPRE devuelve 2 result sets — GridReader requerido.
+        // Timeout generoso — incluye carga del lado TBB (CombinedOverlays).
+        using var grid = await conn.QueryMultipleAsync(
+            _sp.WksLiberacion,
+            new { username, jsonwks = jsonWknames, cliente },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 120);
+
+        var resumen = await grid.ReadAsync<dynamic>();
+        var detalle = await grid.ReadAsync<dynamic>();
+
+        return (resumen, detalle);
     }
 
     /// <inheritdoc/>
@@ -68,7 +72,6 @@ public sealed class LiberacionRepository : ILiberacionRepository
     {
         using var conn = _db.CreateConnection();
 
-        // 2 result sets — GridReader requerido
         using var grid = await conn.QueryMultipleAsync(
             _sp.LiberacionGet,
             new { lote_id = loteId },
@@ -93,4 +96,17 @@ public sealed class LiberacionRepository : ILiberacionRepository
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> LiberacionListAsync(
+        string cliente = "TODOS", CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.LiberacionList,
+            new { cliente },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
+
 }
