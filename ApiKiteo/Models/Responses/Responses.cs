@@ -643,3 +643,45 @@ public sealed record LiberacionListResponse(
     int Total,
     IReadOnlyList<LoteResumenItem> Resultados
 );
+
+public sealed record SchedulingSemanaItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public int TotalVins { get; init; }
+    public int TotalItems { get; init; }
+    public int ItemsEntregados { get; init; }
+    public int ItemsPendientes { get; init; }
+    public decimal PctEntregado { get; init; }
+    public string? CreadoEn { get; init; }
+}
+// <summary>RS2 — detalle de una semana específica (solo si se pasó @wkname).</summary>
+public sealed record SchedulingDetalleItem
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Vin { get; init; } = string.Empty;
+    public string VinDesc { get; init; } = string.Empty;
+    public string Overlay { get; init; } = string.Empty;
+    public string Grupo { get; init; } = string.Empty;
+    public string Item { get; init; } = string.Empty;
+    public string ItemDescripcion { get; init; } = string.Empty;
+    public int? Locacion { get; init; }
+    public string? LocacionDescripcion { get; init; }
+    public int? CntVines { get; init; }
+    public string? Operador { get; init; }
+    public string? EscaneadoEn { get; init; }
+    public string? Entregado { get; init; }
+    public string? EntregadoPor { get; init; }
+    public string? EntregadoIncSup { get; init; }
+    public string Tipo { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+}
+
+public sealed record SchedulingResponse(
+    bool Ok,
+    int TotalSemanas,
+    IReadOnlyList<SchedulingSemanaItem> Semanas,
+    // Null cuando no se pasó @wkname
+    IReadOnlyList<SchedulingDetalleItem>? Detalle
+);

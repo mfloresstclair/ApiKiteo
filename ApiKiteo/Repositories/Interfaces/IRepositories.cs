@@ -317,3 +317,14 @@ public interface ILiberacionRepository
     Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default);
 }
+public interface ISchedulingRepository
+{
+    /// <summary>
+    /// Semanas activas (con items sin Entregado) + detalle opcional.
+    /// @wkname null  → solo RS1 (selector)
+    /// @wkname valor → RS1 + RS2 (selector + detalle)
+    /// Ejecuta: Kit_vin_scheduling
+    /// </summary>
+    Task<(IEnumerable<dynamic> Semanas, IEnumerable<dynamic>? Detalle)> GetAsync(
+        string? wkname, string cliente, CancellationToken ct = default);
+}

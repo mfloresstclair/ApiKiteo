@@ -58,4 +58,6 @@ public sealed class StoredProceduresOptions
     public string CorteIngresar { get; init; } = string.Empty;  // Kit_vin_corte_ingresar
     public string LiberacionList { get; init; } = string.Empty;
 
+    public string Scheduling { get; init; } = string.Empty;
+
 }

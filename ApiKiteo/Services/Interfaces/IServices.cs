@@ -185,3 +185,14 @@ public interface ILiberacionService
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
 }
+public interface ISchedulingService
+{
+    /// <summary>
+    /// Semanas activas + detalle opcional — pass-through de dynamic.
+    /// wkname null  → solo selector (RS1)
+    /// wkname valor → selector + detalle (RS1 + RS2)
+    /// Los campos del response son los alias del SP directamente.
+    /// </summary>
+    Task<ServiceResult<object>> GetAsync(
+        string? wkname, string cliente, CancellationToken ct = default);
+}
