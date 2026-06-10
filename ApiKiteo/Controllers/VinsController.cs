@@ -72,27 +72,32 @@ public sealed class VinsController : KiteoBaseController
         return FromResult(await _service.GetSemanaGrpFaltantesAsync(request, ct));
     }
 
+
     /// <summary>
-    /// Obtiene el estatus de VINs por semana con porcentaje de completado.
+    /// Estatus de VINs por semana con porcentaje de completado.
     /// </summary>
+    /// <param name="modo">1=pendientes (default) | 2=entregados | 3=todos</param>
     [HttpGet("semana_vin_status")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetSemanaVinStatus(
         [FromQuery] string? wkname,
-        [FromQuery] string? cliente,
-        [FromQuery] string? tipo,
-        CancellationToken ct)
+        [FromQuery] string cliente = "TBB",
+        [FromQuery] string tipo = "CEA",
+        [FromQuery] byte modo = 1,
+        CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(wkname)
-            || string.IsNullOrWhiteSpace(cliente)
-            || string.IsNullOrWhiteSpace(tipo))
+        if (string.IsNullOrWhiteSpace(wkname))
             return BadRequest(ErrorResponse.Create(
-                "Faltan parametros requeridos (wkname, cliente, tipo).",
+                "El parámetro 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        if (modo is < 1 or > 3)
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'modo' debe ser 1 (pending), 2 (delivered) o 3 (all).",
                 ErrorCodes.Kiteo400));
 
         return FromResult(await _service.GetSemanaVinStatusAsync(
-            wkname.Trim(), cliente.Trim(), tipo.Trim(), ct));
+            wkname.Trim(), cliente, tipo, modo, ct));
     }
     // ── GET /buscar_circuito ──────────────────────────────────────────────────
 

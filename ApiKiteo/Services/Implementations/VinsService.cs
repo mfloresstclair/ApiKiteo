@@ -136,20 +136,25 @@ public sealed class VinsService : IVinsService
     // ── /semana_vin_status ────────────────────────────────────────────────────
 
     public async Task<ServiceResult<SemanaVinStatusResponse>> GetSemanaVinStatusAsync(
-        string wkname, string cliente, string tipo, CancellationToken ct = default)
+        string wkname, string cliente, string tipo,
+        byte modo = 1,
+        CancellationToken ct = default)
     {
         try
         {
-            var rows = await _repo.GetSemanaVinStatusAsync(wkname, cliente, tipo, ct);
+            var rows = await _repo.GetSemanaVinStatusAsync(wkname, cliente, tipo, modo, ct);
 
             var resultados = rows
                 .Select(r => (IDictionary<string, object?>)r)
+                .Where(d => (d.GetInt("Locacion") ?? 0) != 0)
                 .Select(d => new SemanaVinStatusItem
                 {
-                    Locacion = d.GetInt("Locacion") ?? d.GetInt("locacion"),
-                    Vin = d.GetStr("Vin") ?? d.GetStr("vin"),
+                    Locacion = d.GetInt("Locacion"),
+                    Vin = d.GetStr("Vin"),
                     Vindesc = NormalizeVindesc(d.GetStr("vinDesc")),
-                    Porcentaje = d.GetDecimal("Porcentaje") ?? 0m
+                    Porcentaje = d.GetDecimal("Porcentaje") ?? 0m,
+                    Entregado = d.GetStr("entregado"),
+                    EntregadoPor = d.GetStr("entregadoPor")
                 })
                 .ToList();
 
@@ -158,7 +163,8 @@ public sealed class VinsService : IVinsService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetSemanaVinStatus {Wk}", wkname);
+            _logger.LogError(ex,
+                "Error GetSemanaVinStatus {Wk} modo={M}", wkname, modo);
             return ServiceResult<SemanaVinStatusResponse>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }

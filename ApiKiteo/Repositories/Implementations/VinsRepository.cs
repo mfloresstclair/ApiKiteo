@@ -55,15 +55,18 @@ public sealed class VinsRepository : IVinsRepository
     }
 
     public async Task<IEnumerable<dynamic>> GetSemanaVinStatusAsync(
-        string wkname, string cliente, string tipo, CancellationToken ct = default)
+        string wkname, string cliente, string tipo,
+        byte modo = 1,
+        CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync(
             _sp.GetSemanaVinStatus,
-            new { wkname, cliente, tipo },
+            new { wkname, cliente, tipo, modo },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
+
     public async Task<IEnumerable<dynamic>> BuscarCircuitoAsync(
         string wkname, string circuito, string soloFaltantes,
         CancellationToken ct = default)

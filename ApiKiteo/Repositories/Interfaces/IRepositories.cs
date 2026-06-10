@@ -44,9 +44,10 @@ public interface IVinsRepository
 
     Task<IEnumerable<dynamic>> GetSemanaGrpFaltantesAsync(
         string wkname, string jsonGrupos, string det, CancellationToken ct = default);
-
     Task<IEnumerable<dynamic>> GetSemanaVinStatusAsync(
-        string wkname, string cliente, string tipo, CancellationToken ct = default);
+        string wkname, string cliente, string tipo,
+        byte modo = 1,    // 1=pending | 2=delivered | 3=all
+        CancellationToken ct = default);
 
     /// <summary>
     /// Busca filas en VinBusiness_DB_macro por item o overlay (búsqueda parcial).

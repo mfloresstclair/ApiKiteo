@@ -45,7 +45,9 @@ public interface IVinsService
         SemanaGrpFaltantesRequest request, CancellationToken ct = default);
 
     Task<ServiceResult<SemanaVinStatusResponse>> GetSemanaVinStatusAsync(
-        string wkname, string cliente, string tipo, CancellationToken ct = default);
+        string wkname, string cliente, string tipo,
+        byte modo = 1,
+        CancellationToken ct = default);
 
     Task<ServiceResult<BuscarCircuitoResponse>> BuscarCircuitoAsync(
         string wkname, string circuito, bool soloFaltantes,

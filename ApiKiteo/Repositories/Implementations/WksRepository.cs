@@ -46,16 +46,9 @@ public sealed class WksRepository : IWksRepository
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
-
-    /// <inheritdoc/>
     public async Task RefreshStatusCacheAsync(
         string wkname, CancellationToken ct = default)
     {
-        var sw = Stopwatch.StartNew();
-        _logger.LogDebug("RefreshCache start | wkname={Wk}", wkname);
-
-        // ── Parsear wkname ────────────────────────────────────────────────────
-        // Formato: wk21_142_CEA | wk20_111_ZC/ZD | wk23_134_ZA
         var partes = wkname.Split('_');
         if (partes.Length < 3) return;
 
@@ -63,123 +56,118 @@ public sealed class WksRepository : IWksRepository
         var vinCant = int.TryParse(partes[1], out var v) ? v : 0;
         var typeRaw = string.Join("_", partes[2..]);
 
-        // Tipos compuestos (ZC/ZD) se expanden en filas separadas del cache.
-        // El '/' es la señal de tipo compuesto — no se hardcodea ningún nombre.
+        // Expandir tipo compuesto ZC/ZD → ["ZC", "ZD"]
         var tipos = typeRaw.Split('/');
-        var esCompuesto = tipos.Length > 1;
+
+        // Detectar si es compuesto desde el wkname — no desde el tipo del cache
+        bool esCompuesto = typeRaw.Contains('/');
 
         using var conn = _db.CreateConnection();
-
-        // ── Cliente desde VinBusiness_DB_macro ────────────────────────────────
-        // Lectura directa del dato real en BD — sin mapping en config.
-        // Si el wkname aún no tiene rows (semana vacía), devuelve string.Empty.
-        var cliente = await conn.ExecuteScalarAsync<string?>(
-            "SELECT TOP 1 CLIENTE FROM dbo.VinBusiness_DB_macro WITH (NOLOCK) WHERE WkName = @wkname",
-            new { wkname }) ?? string.Empty;
 
         foreach (var tipo in tipos)
         {
             var tipoTrim = tipo.Trim();
 
-            // ── Filtro dinámico por tipo compuesto ────────────────────────────
-            // Tipos compuestos (ZC/ZD) comparten wkname en VinBusiness_DB_macro.
-            // Se distinguen por vinDesc: BodyCVZC_% / BodyCVZD_%.
-            // Tipos simples (CEA, ZA, C2...) → todos los rows del wkname son del mismo tipo.
-            // La regla del '/' elimina el hardcoding de ('ZC','ZD') — cualquier
-            // tipo compuesto futuro funciona automáticamente.
-            var filtroVinDesc = esCompuesto
-                ? "AND vinDesc LIKE 'BodyCV' + @tipo + '\\_%' ESCAPE '\\'"
-                : string.Empty;
-
-            // 1) Porcentaje escaneado
-            var sqlPorc = $"""
-                SELECT
-                    100.0 * SUM(CASE WHEN Operador IS NOT NULL THEN 1 ELSE 0 END)
-                          / NULLIF(COUNT(*), 0)
-                FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
-                WHERE WkName = @wkname
-                {filtroVinDesc}
-                """;
+            // ── 1) Porcentaje escaneado ──────────────────────────────────────
+            // FIX: usar '%' en lugar de '\_%' — incluye VINs sin modelo
+            // FIX: detectar compuesto desde typeRaw, no hardcodeado 'ZC','ZD'
+            const string sqlPorc = """
+            SELECT
+                100.0 * SUM(CASE WHEN Operador IS NOT NULL THEN 1 ELSE 0 END)
+                      / NULLIF(COUNT(*), 0)
+            FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
+            WHERE WkName = @wkname
+              AND (
+                    (@esCompuesto = 1
+                     AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                 OR (@esCompuesto = 0)
+              )
+              AND Locacion <> 0
+              AND ISNULL(Estatus, 1) = 1
+            """;
 
             var porc = await conn.ExecuteScalarAsync<decimal?>(
-                sqlPorc, new { wkname, tipo = tipoTrim }) ?? 0m;
+                sqlPorc,
+                new { wkname, tipoTrim, esCompuesto }) ?? 0m;
 
-            // 2) Kits completos kiteados vs entregados
-            var sqlKits = $"""
+            // ── 2) Kits completos ────────────────────────────────────────────
+            const string sqlKits = """
+            SELECT
+                SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 0 THEN 1 ELSE 0 END) AS kitsComp,
+                SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 1 THEN 1 ELSE 0 END) AS KitsCompFinal
+            FROM (
                 SELECT
-                    SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 0 THEN 1 ELSE 0 END) AS kitsComp,
-                    SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 1 THEN 1 ELSE 0 END) AS KitsCompFinal
-                FROM (
-                    SELECT
-                        Vin,
-                        MIN(CASE WHEN Operador  IS NOT NULL THEN 1 ELSE 0 END) AS TodoKiteado,
-                        MAX(CASE WHEN Entregado IS NOT NULL THEN 1 ELSE 0 END) AS FueEntregado
-                    FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
-                    WHERE WkName = @wkname
-                    {filtroVinDesc}
-                    GROUP BY Vin
-                ) x
-                """;
+                    Vin,
+                    MIN(CASE WHEN Operador  IS NOT NULL THEN 1 ELSE 0 END) AS TodoKiteado,
+                    MAX(CASE WHEN Entregado IS NOT NULL THEN 1 ELSE 0 END) AS FueEntregado
+                FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
+                WHERE WkName = @wkname
+                  AND (
+                        (@esCompuesto = 1
+                         AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                     OR (@esCompuesto = 0)
+                  )
+                  AND Locacion <> 0
+                  AND ISNULL(Estatus, 1) = 1
+                GROUP BY Vin
+            ) x
+            """;
 
             var kits = (IDictionary<string, object?>?)await conn.QuerySingleOrDefaultAsync(
-                sqlKits, new { wkname, tipo = tipoTrim });
+                sqlKits, new { wkname, tipoTrim, esCompuesto });
 
             var kitsComp = Convert.ToInt32(kits?.GetValueOrDefault("kitsComp") ?? 0);
             var kitsCompFinal = Convert.ToInt32(kits?.GetValueOrDefault("KitsCompFinal") ?? 0);
             var kitsCompTot = kitsComp + kitsCompFinal;
 
-            // 3) UPSERT — DELETE + INSERT
+            // ── 3) UPSERT ────────────────────────────────────────────────────
             const string sqlDelete = """
-                DELETE FROM dbo.Kit_vin_wks_status_cache
-                WHERE wkname = @wkname AND tipo = @tipo
-                """;
+            DELETE FROM dbo.Kit_vin_wks_status_cache
+            WHERE wkname = @wkname AND tipo = @tipoTrim
+            """;
 
             const string sqlInsert = """
-                INSERT INTO dbo.Kit_vin_wks_status_cache
-                    (wkname, wk, tipo, cliente, VinCant, kitsComp, KitsCompFinal,
-                     KitsCompTot, Porc, updated_at)
-                VALUES
-                    (@wkname, @wk, @tipo, @cliente, @vinCant, @kitsComp, @kitsCompFinal,
-                     @kitsCompTot, @porc, GETUTCDATE())
-                """;
+            INSERT INTO dbo.Kit_vin_wks_status_cache
+                (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
+                 KitsCompTot, Porc, updated_at)
+            VALUES
+                (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
+                 @kitsCompTot, @porc, GETUTCDATE())
+            """;
 
-            await conn.ExecuteAsync(sqlDelete, new { wkname, tipo = tipoTrim });
+            await conn.ExecuteAsync(sqlDelete, new { wkname, tipoTrim });
             await conn.ExecuteAsync(sqlInsert, new
             {
                 wkname,
                 wk,
-                tipo = tipoTrim,
-                cliente,
+                tipoTrim,
                 vinCant,
                 kitsComp,
                 kitsCompFinal,
                 kitsCompTot,
                 porc = Math.Round(porc, 2)
             });
+
+            _logger.LogDebug(
+                "RefreshCache upsert | wkname={Wk} tipo={T} porc={P}%",
+                wkname, tipoTrim, Math.Round(porc, 2));
         }
 
-        // 4) Auto-cleanup — límites desde CacheSettings en appsettings
+        // ── 4) Auto-cleanup ──────────────────────────────────────────────────
         const string sqlCleanup = """
-            DELETE FROM dbo.Kit_vin_wks_status_cache
-            WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
-               OR (KitsCompTot >= VinCant
-                   AND VinCant > 0
-                   AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
-            """;
+        DELETE FROM dbo.Kit_vin_wks_status_cache
+        WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
+           OR (KitsCompTot >= VinCant
+               AND VinCant > 0
+               AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
+        """;
 
         await conn.ExecuteAsync(sqlCleanup, new
         {
             semanasRetener = _semanasRetener,
             horasCompletadas = _horasCompletadas
         });
-
-        sw.Stop();
-        _logger.LogDebug(
-            "RefreshCache done | wkname={Wk} tipos={T} cliente={C} elapsed={E}ms",
-            wkname, string.Join("/", tipos), cliente, sw.ElapsedMilliseconds);
     }
-
-    /// <inheritdoc/>
     public async Task<int> CacheCleanupAsync(
         int semanasRetener, int horasCompletadas, CancellationToken ct = default)
     {

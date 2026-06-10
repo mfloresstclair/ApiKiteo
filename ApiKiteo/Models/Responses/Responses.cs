@@ -95,8 +95,10 @@ public sealed record SemanaVinStatusItem
 {
     public int? Locacion { get; init; }
     public string? Vin { get; init; }
-    public string? Vindesc { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
+    public string? Vindesc { get; init; }
     public decimal Porcentaje { get; init; }
+    public string? Entregado { get; init; }    // null en modo 1
+    public string? EntregadoPor { get; init; }    // null en modo 1
 }
 
 public sealed record SemanaVinStatusResponse(
