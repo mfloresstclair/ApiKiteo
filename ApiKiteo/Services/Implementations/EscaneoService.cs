@@ -10,7 +10,7 @@ namespace ApiKiteo.API.Services.Implementations;
 public sealed class EscaneoService : IEscaneoService
 {
     private readonly IEscaneoRepository _repo;
-    private readonly IWksRepository _wksRepo;   // para RefreshStatusCache
+    private readonly IWksRepository _wksRepo;
     private readonly ILogger<EscaneoService> _logger;
 
     public EscaneoService(
@@ -40,8 +40,8 @@ public sealed class EscaneoService : IEscaneoService
                 {
                     Vin = d.GetStr("vin"),
                     Loc = d.GetValueOrDefault("Loc")
-                         ?? d.GetValueOrDefault("locacion")
-                         ?? d.GetValueOrDefault("Locacion"),
+                          ?? d.GetValueOrDefault("locacion")
+                          ?? d.GetValueOrDefault("Locacion"),
                     Grupo = d.GetStr("Grupo") ?? d.GetStr("grupo"),
                     Item = d.GetStr("item") ?? request.Item
                 })
@@ -53,7 +53,8 @@ public sealed class EscaneoService : IEscaneoService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetVinToAdjust {Wk}/{Item}", request.Wkname, request.Item);
+            _logger.LogError(ex,
+                "Error en GetVinToAdjust {Wk}/{Item}", request.Wkname, request.Item);
             return ServiceResult<VinToAdjustResponse>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
@@ -99,13 +100,28 @@ public sealed class EscaneoService : IEscaneoService
                 }
             }
 
+            // Actualizar cache después del ajuste
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _wksRepo.RefreshStatusCacheAsync(request.Wkname);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "RefreshStatusCache falló (ajuste) | wkname={W}", request.Wkname);
+                }
+            });
+
             return ServiceResult<EscanearAjusteResponse>.Ok(
                 new EscanearAjusteResponse(
                     true, request.Wkname, request.Item, vines.Count, evento, vines));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en EscanearAjuste {Wk}/{Item}", request.Wkname, request.Item);
+            _logger.LogError(ex,
+                "Error en EscanearAjuste {Wk}/{Item}", request.Wkname, request.Item);
             return ServiceResult<EscanearAjusteResponse>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
@@ -160,8 +176,10 @@ public sealed class EscaneoService : IEscaneoService
                 if (tipo.Equals("GrpData", StringComparison.OrdinalIgnoreCase))
                 {
                     var grupo = d.GetStr("grupo") ?? d.GetStr("Grupo");
-                    var porcentaje = d.GetValueOrDefault("Porcentaje") ?? d.GetValueOrDefault("porcentaje");
-                    if (porcentaje is not null && grupo is not null && !gruposMap.ContainsKey(grupo))
+                    var porcentaje = d.GetValueOrDefault("Porcentaje")
+                                  ?? d.GetValueOrDefault("porcentaje");
+                    if (porcentaje is not null && grupo is not null
+                        && !gruposMap.ContainsKey(grupo))
                     {
                         gruposMap[grupo] = new Dictionary<string, object?>
                         {
@@ -172,9 +190,19 @@ public sealed class EscaneoService : IEscaneoService
                 }
             }
 
-            // Cache fire-and-forget — actualiza el status board después del escaneo
-            _ = Task.Run(() =>
-                _wksRepo.RefreshStatusCacheAsync(request.Wkname, CancellationToken.None));
+            // FIX: _wksRepo (antes decía _wksRepository → NullReferenceException silenciosa)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _wksRepo.RefreshStatusCacheAsync(request.Wkname);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "RefreshStatusCache falló (escanear) | wkname={W}", request.Wkname);
+                }
+            });
 
             return ServiceResult<EscanearResponse>.Ok(
                 new EscanearResponse(
@@ -189,7 +217,8 @@ public sealed class EscaneoService : IEscaneoService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en Escanear {Wk}/{Item}", request.Wkname, request.Item);
+            _logger.LogError(ex,
+                "Error en Escanear {Wk}/{Item}", request.Wkname, request.Item);
             return ServiceResult<EscanearResponse>.Fail(
                 500, "Error interno. Contacta a soporte.", ErrorCodes.Kiteo500);
         }
@@ -217,9 +246,19 @@ public sealed class EscaneoService : IEscaneoService
                 .Select(d => d.ToDictionary(k => k.Key, v => v.Value))
                 .ToList();
 
-            // Cache fire-and-forget — actualiza el status board después de la entrega
-            _ = Task.Run(() =>
-                _wksRepo.RefreshStatusCacheAsync(request.Wkname, CancellationToken.None));
+            // FIX: try/catch — antes sin manejo de errores, fallaba silenciosamente
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _wksRepo.RefreshStatusCacheAsync(request.Wkname);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "RefreshStatusCache falló (entrega) | wkname={W}", request.Wkname);
+                }
+            });
 
             return ServiceResult<SemanaVinesEntregaResponse>.Ok(
                 new SemanaVinesEntregaResponse(

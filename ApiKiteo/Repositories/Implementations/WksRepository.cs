@@ -56,11 +56,9 @@ public sealed class WksRepository : IWksRepository
         var vinCant = int.TryParse(partes[1], out var v) ? v : 0;
         var typeRaw = string.Join("_", partes[2..]);
 
-        // Expandir tipo compuesto ZC/ZD → ["ZC", "ZD"]
-        var tipos = typeRaw.Split('/');
-
-        // Detectar si es compuesto desde el wkname — no desde el tipo del cache
+        // FIX 3: detectar compuesto desde wkname ('ZC/ZD') NO desde cache ('ZC')
         bool esCompuesto = typeRaw.Contains('/');
+        var tipos = typeRaw.Split('/');
 
         using var conn = _db.CreateConnection();
 
@@ -68,29 +66,31 @@ public sealed class WksRepository : IWksRepository
         {
             var tipoTrim = tipo.Trim();
 
-            // ── 1) Porcentaje escaneado ──────────────────────────────────────
-            // FIX: usar '%' en lugar de '\_%' — incluye VINs sin modelo
-            // FIX: detectar compuesto desde typeRaw, no hardcodeado 'ZC','ZD'
+            // ── FIX 1 + FIX 2: Porcentaje total incluyendo MANDAR A FINAL ───
+            // FIX 1: SIN AND Locacion <> 0 en el denominador/numerador
+            //        → Porc refleja el % real que ve el piso (racks + MaF)
+            // FIX 2: '%' en lugar de '\_%' → incluye vinDesc sin modelo
+            // FIX 3: esCompuesto = 1 filtra por vinDesc, no por tipo hardcodeado
             const string sqlPorc = """
             SELECT
                 100.0 * SUM(CASE WHEN Operador IS NOT NULL THEN 1 ELSE 0 END)
                       / NULLIF(COUNT(*), 0)
             FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
             WHERE WkName = @wkname
+              AND ISNULL(Estatus, 1) = 1
               AND (
-                    (@esCompuesto = 1
-                     AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                    (@esCompuesto = 1 AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
                  OR (@esCompuesto = 0)
               )
-              AND Locacion <> 0
-              AND ISNULL(Estatus, 1) = 1
             """;
 
             var porc = await conn.ExecuteScalarAsync<decimal?>(
                 sqlPorc,
-                new { wkname, tipoTrim, esCompuesto }) ?? 0m;
+                new { wkname, tipoTrim, esCompuesto = esCompuesto ? 1 : 0 }) ?? 0m;
 
-            // ── 2) Kits completos ────────────────────────────────────────────
+            // ── FIX 4: kitsComp — MANTIENE Locacion <> 0 ────────────────────
+            // Un VIN "completo" = todos sus items de RACK escaneados.
+            // MANDAR A FINAL no bloquea — son items adicionales, no de rack.
             const string sqlKits = """
             SELECT
                 SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 0 THEN 1 ELSE 0 END) AS kitsComp,
@@ -102,25 +102,24 @@ public sealed class WksRepository : IWksRepository
                     MAX(CASE WHEN Entregado IS NOT NULL THEN 1 ELSE 0 END) AS FueEntregado
                 FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
                 WHERE WkName = @wkname
+                  AND ISNULL(Estatus, 1) = 1
+                  AND Locacion <> 0
                   AND (
-                        (@esCompuesto = 1
-                         AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                        (@esCompuesto = 1 AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
                      OR (@esCompuesto = 0)
                   )
-                  AND Locacion <> 0
-                  AND ISNULL(Estatus, 1) = 1
                 GROUP BY Vin
             ) x
             """;
 
             var kits = (IDictionary<string, object?>?)await conn.QuerySingleOrDefaultAsync(
-                sqlKits, new { wkname, tipoTrim, esCompuesto });
+                sqlKits, new { wkname, tipoTrim, esCompuesto = esCompuesto ? 1 : 0 });
 
             var kitsComp = Convert.ToInt32(kits?.GetValueOrDefault("kitsComp") ?? 0);
             var kitsCompFinal = Convert.ToInt32(kits?.GetValueOrDefault("KitsCompFinal") ?? 0);
             var kitsCompTot = kitsComp + kitsCompFinal;
 
-            // ── 3) UPSERT ────────────────────────────────────────────────────
+            // ── UPSERT ────────────────────────────────────────────────────────
             const string sqlDelete = """
             DELETE FROM dbo.Kit_vin_wks_status_cache
             WHERE wkname = @wkname AND tipo = @tipoTrim
@@ -149,11 +148,11 @@ public sealed class WksRepository : IWksRepository
             });
 
             _logger.LogDebug(
-                "RefreshCache upsert | wkname={Wk} tipo={T} porc={P}%",
-                wkname, tipoTrim, Math.Round(porc, 2));
+                "RefreshCache OK | wkname={W} tipo={T} porc={P}% kitsComp={K}",
+                wkname, tipoTrim, Math.Round(porc, 2), kitsComp);
         }
 
-        // ── 4) Auto-cleanup ──────────────────────────────────────────────────
+        // ── Auto-cleanup ──────────────────────────────────────────────────────
         const string sqlCleanup = """
         DELETE FROM dbo.Kit_vin_wks_status_cache
         WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
@@ -162,12 +161,10 @@ public sealed class WksRepository : IWksRepository
                AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
         """;
 
-        await conn.ExecuteAsync(sqlCleanup, new
-        {
-            semanasRetener = _semanasRetener,
-            horasCompletadas = _horasCompletadas
-        });
+        await conn.ExecuteAsync(sqlCleanup,
+            new { semanasRetener = _semanasRetener, horasCompletadas = _horasCompletadas });
     }
+    
     public async Task<int> CacheCleanupAsync(
         int semanasRetener, int horasCompletadas, CancellationToken ct = default)
     {
