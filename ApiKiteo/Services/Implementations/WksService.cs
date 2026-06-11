@@ -87,6 +87,15 @@ public sealed class WksService : IWksService
         }
     }
 
+    // ── POST /wks/cache/refresh ───────────────────────────────────────────────
+
+    public async Task RefreshCacheAsync(
+        string wkname, CancellationToken ct = default)
+    {
+        _logger.LogInformation("RefreshCache manual | wkname={W}", wkname);
+        await _repo.RefreshStatusCacheAsync(wkname, ct);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static decimal GetDecimal(object? val)
@@ -95,11 +104,11 @@ public sealed class WksService : IWksService
         return val switch
         {
             decimal d => Math.Round(d, 2),
-            double v => Math.Round((decimal)v, 2),
+            double dv => Math.Round((decimal)dv, 2),
             float f => Math.Round((decimal)f, 2),
-            _ => decimal.TryParse(val.ToString(), out var parsed)
-                             ? Math.Round(parsed, 2)
-                             : 0m
+            _ => decimal.TryParse(val.ToString(), out var p)
+                              ? Math.Round(p, 2)
+                              : 0m
         };
     }
 }

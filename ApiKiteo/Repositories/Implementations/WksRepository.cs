@@ -14,8 +14,6 @@ public sealed class WksRepository : IWksRepository
     private readonly IDbConnectionFactory _db;
     private readonly StoredProceduresOptions _sp;
     private readonly ILogger<WksRepository> _logger;
-
-    // ── Límites del auto-cleanup (CacheSettings en appsettings) ──────────────
     private readonly int _semanasRetener;
     private readonly int _horasCompletadas;
 
@@ -28,7 +26,6 @@ public sealed class WksRepository : IWksRepository
         _db = db;
         _sp = sp.Value;
         _logger = logger;
-
         _semanasRetener = config.GetValue<int>("CacheSettings:SemanasRetener", 8);
         _horasCompletadas = config.GetValue<int>("CacheSettings:HorasCompletadas", 48);
     }
@@ -38,14 +35,13 @@ public sealed class WksRepository : IWksRepository
         string jsonWkname, CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-
-        // Lee del cache Kit_vin_wks_status_cache — respuesta <10ms.
         return await conn.QueryAsync(
             _sp.WksStatusBoard,
             new { jsonWkname },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
+
     public async Task RefreshStatusCacheAsync(
         string wkname, CancellationToken ct = default)
     {
@@ -56,7 +52,6 @@ public sealed class WksRepository : IWksRepository
         var vinCant = int.TryParse(partes[1], out var v) ? v : 0;
         var typeRaw = string.Join("_", partes[2..]);
 
-        // FIX 3: detectar compuesto desde wkname ('ZC/ZD') NO desde cache ('ZC')
         bool esCompuesto = typeRaw.Contains('/');
         var tipos = typeRaw.Split('/');
 
@@ -66,51 +61,51 @@ public sealed class WksRepository : IWksRepository
         {
             var tipoTrim = tipo.Trim();
 
-            // ── FIX 1 + FIX 2: Porcentaje total incluyendo MANDAR A FINAL ───
-            // FIX 1: SIN AND Locacion <> 0 en el denominador/numerador
-            //        → Porc refleja el % real que ve el piso (racks + MaF)
-            // FIX 2: '%' en lugar de '\_%' → incluye vinDesc sin modelo
-            // FIX 3: esCompuesto = 1 filtra por vinDesc, no por tipo hardcodeado
+            // ── 1) Porcentaje escaneado ───────────────────────────────────────
+            // FIX: SIN AND Locacion <> 0 — incluye MANDAR A FINAL en el %
+            //      alinea con lo que el piso cuenta (total de la semana)
             const string sqlPorc = """
-            SELECT
-                100.0 * SUM(CASE WHEN Operador IS NOT NULL THEN 1 ELSE 0 END)
-                      / NULLIF(COUNT(*), 0)
-            FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
-            WHERE WkName = @wkname
-              AND ISNULL(Estatus, 1) = 1
-              AND (
-                    (@esCompuesto = 1 AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
-                 OR (@esCompuesto = 0)
-              )
-            """;
+                SELECT
+                    100.0 * SUM(CASE WHEN Operador IS NOT NULL THEN 1 ELSE 0 END)
+                          / NULLIF(COUNT(*), 0)
+                FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
+                WHERE WkName = @wkname
+                  AND (
+                        (@esCompuesto = 1
+                         AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                     OR (@esCompuesto = 0)
+                  )
+                  AND ISNULL(Estatus, 1) = 1
+                """;
 
             var porc = await conn.ExecuteScalarAsync<decimal?>(
                 sqlPorc,
                 new { wkname, tipoTrim, esCompuesto = esCompuesto ? 1 : 0 }) ?? 0m;
 
-            // ── FIX 4: kitsComp — MANTIENE Locacion <> 0 ────────────────────
+            // ── 2) Kits completos — MANTIENE Locacion <> 0 ───────────────────
             // Un VIN "completo" = todos sus items de RACK escaneados.
-            // MANDAR A FINAL no bloquea — son items adicionales, no de rack.
+            // MANDAR A FINAL no bloquea el conteo de kits completos.
             const string sqlKits = """
-            SELECT
-                SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 0 THEN 1 ELSE 0 END) AS kitsComp,
-                SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 1 THEN 1 ELSE 0 END) AS KitsCompFinal
-            FROM (
                 SELECT
-                    Vin,
-                    MIN(CASE WHEN Operador  IS NOT NULL THEN 1 ELSE 0 END) AS TodoKiteado,
-                    MAX(CASE WHEN Entregado IS NOT NULL THEN 1 ELSE 0 END) AS FueEntregado
-                FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
-                WHERE WkName = @wkname
-                  AND ISNULL(Estatus, 1) = 1
-                  AND Locacion <> 0
-                  AND (
-                        (@esCompuesto = 1 AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
-                     OR (@esCompuesto = 0)
-                  )
-                GROUP BY Vin
-            ) x
-            """;
+                    SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 0 THEN 1 ELSE 0 END) AS kitsComp,
+                    SUM(CASE WHEN TodoKiteado = 1 AND FueEntregado = 1 THEN 1 ELSE 0 END) AS KitsCompFinal
+                FROM (
+                    SELECT
+                        Vin,
+                        MIN(CASE WHEN Operador  IS NOT NULL THEN 1 ELSE 0 END) AS TodoKiteado,
+                        MAX(CASE WHEN Entregado IS NOT NULL THEN 1 ELSE 0 END) AS FueEntregado
+                    FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
+                    WHERE WkName = @wkname
+                      AND (
+                            (@esCompuesto = 1
+                             AND vinDesc LIKE 'BodyCV' + @tipoTrim + '%')
+                         OR (@esCompuesto = 0)
+                      )
+                      AND Locacion <> 0
+                      AND ISNULL(Estatus, 1) = 1
+                    GROUP BY Vin
+                ) x
+                """;
 
             var kits = (IDictionary<string, object?>?)await conn.QuerySingleOrDefaultAsync(
                 sqlKits, new { wkname, tipoTrim, esCompuesto = esCompuesto ? 1 : 0 });
@@ -121,18 +116,18 @@ public sealed class WksRepository : IWksRepository
 
             // ── UPSERT ────────────────────────────────────────────────────────
             const string sqlDelete = """
-            DELETE FROM dbo.Kit_vin_wks_status_cache
-            WHERE wkname = @wkname AND tipo = @tipoTrim
-            """;
+                DELETE FROM dbo.Kit_vin_wks_status_cache
+                WHERE wkname = @wkname AND tipo = @tipoTrim
+                """;
 
             const string sqlInsert = """
-            INSERT INTO dbo.Kit_vin_wks_status_cache
-                (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
-                 KitsCompTot, Porc, updated_at)
-            VALUES
-                (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
-                 @kitsCompTot, @porc, GETUTCDATE())
-            """;
+                INSERT INTO dbo.Kit_vin_wks_status_cache
+                    (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
+                     KitsCompTot, Porc, updated_at)
+                VALUES
+                    (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
+                     @kitsCompTot, @porc, GETUTCDATE())
+                """;
 
             await conn.ExecuteAsync(sqlDelete, new { wkname, tipoTrim });
             await conn.ExecuteAsync(sqlInsert, new
@@ -154,17 +149,17 @@ public sealed class WksRepository : IWksRepository
 
         // ── Auto-cleanup ──────────────────────────────────────────────────────
         const string sqlCleanup = """
-        DELETE FROM dbo.Kit_vin_wks_status_cache
-        WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
-           OR (KitsCompTot >= VinCant
-               AND VinCant > 0
-               AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
-        """;
+            DELETE FROM dbo.Kit_vin_wks_status_cache
+            WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
+               OR (KitsCompTot >= VinCant
+                   AND VinCant > 0
+                   AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
+            """;
 
         await conn.ExecuteAsync(sqlCleanup,
             new { semanasRetener = _semanasRetener, horasCompletadas = _horasCompletadas });
     }
-    
+
     public async Task<int> CacheCleanupAsync(
         int semanasRetener, int horasCompletadas, CancellationToken ct = default)
     {

@@ -143,6 +143,12 @@ public interface IWksService
     /// </summary>
     Task<ServiceResult<WksCacheCleanupResponse>> CacheCleanupAsync(
         int semanasRetener, int horasCompletadas, CancellationToken ct = default);
+
+    /// <summary>
+    /// Recalcula el cache para un wkname específico.
+    /// Llamado desde POST /wks/cache/refresh para correcciones manuales post-deploy.
+    /// </summary>
+    Task RefreshCacheAsync(string wkname, CancellationToken ct = default);
 }
 
 // ─── Macro Export ─────────────────────────────────────────────────────────────

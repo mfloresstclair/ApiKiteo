@@ -186,3 +186,6 @@ public sealed record LiberacionCrearRequest(
     [Required] List<string> Wknames,
     bool Sobreescribir = false
 );
+public sealed record WksCacheRefreshRequest(
+    [Required] string Wkname
+);

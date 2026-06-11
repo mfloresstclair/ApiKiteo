@@ -12,6 +12,7 @@ namespace ApiKiteo.API.Controllers;
 public sealed class WksController : KiteoBaseController
 {
     private readonly IWksService _service;
+
     public WksController(IWksService service) => _service = service;
 
     // ── POST /wks/status_board ────────────────────────────────────────────────
@@ -73,5 +74,32 @@ public sealed class WksController : KiteoBaseController
 
         return FromResult(await _service.CacheCleanupAsync(
             request.SemanasRetener, request.HorasCompletadas, ct));
+    }
+
+    // ── POST /wks/cache/refresh ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Fuerza el recálculo del cache para un wkname específico.
+    /// Útil tras deploy para actualizar valores sin esperar al siguiente escaneo.
+    /// </summary>
+    [HttpPost("cache/refresh")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForceRefresh(
+        [FromBody] WksCacheRefreshRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        await _service.RefreshCacheAsync(request.Wkname.Trim(), ct);
+
+        return Ok(new
+        {
+            ok = true,
+            wkname = request.Wkname.Trim(),
+            mensaje = "Cache recalculado."
+        });
     }
 }
