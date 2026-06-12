@@ -204,3 +204,11 @@ public interface ISchedulingService
     Task<ServiceResult<object>> GetAsync(
         string? wkname, string cliente, CancellationToken ct = default);
 }
+public interface IDescaneoService
+{
+    Task<ServiceResult<DescanBuscarResponse>> BuscarAsync(
+        DescanBuscarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<DescaneoAplicarResponse>> AplicarAsync(
+        DescaneoAplicarRequest request, CancellationToken ct = default);
+}

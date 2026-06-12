@@ -189,3 +189,20 @@ public sealed record LiberacionCrearRequest(
 public sealed record WksCacheRefreshRequest(
     [Required] string Wkname
 );
+
+public sealed record DescanBuscarRequest(
+    string? Wkname,
+    string? Vin,
+    string? Item,
+    string? Operador,
+    string? Cliente,
+    DateOnly? FechaDesde,
+    DateOnly? FechaHasta,
+    byte Modo = 1
+);
+
+public sealed record DescaneoAplicarRequest(
+    [Required] int Id,
+    [Required] string Username,
+    [Required] string Motivo
+);

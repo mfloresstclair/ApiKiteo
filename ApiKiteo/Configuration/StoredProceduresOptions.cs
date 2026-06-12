@@ -60,4 +60,8 @@ public sealed class StoredProceduresOptions
 
     public string Scheduling { get; init; } = string.Empty;
 
+    // ── Descaneo ──────────────────────────────────────────────────────────────────
+    public string DescanBuscar { get; init; } = string.Empty;  // Kit_vin_descan_buscar
+    public string DescaneoAplicar { get; init; } = string.Empty;  // Kit_vin_descaneo_aplicar
+
 }

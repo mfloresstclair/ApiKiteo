@@ -687,3 +687,45 @@ public sealed record SchedulingResponse(
     // Null cuando no se pasó @wkname
     IReadOnlyList<SchedulingDetalleItem>? Detalle
 );
+
+
+public sealed record DescanBuscarItem
+{
+    public int Id { get; init; }
+    public string Wkname { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public string Vin { get; init; } = string.Empty;
+    public string? Modelo { get; init; }
+    public string? CoNum { get; init; }
+    public string? Secuencia { get; init; }
+    public string? Grupo { get; init; }
+    public string? Vindesc { get; init; }
+    public int? Locacion { get; init; }
+    public string? LocacionDesc { get; init; }
+    public string Item { get; init; } = string.Empty;
+    public string? ItemDescripcion { get; init; }
+    public string? Operador { get; init; }   // null = sin escanear
+    public string? EscaneadoEn { get; init; }
+    public string? Entregado { get; init; }
+    public string? EntregadoPor { get; init; }
+    public bool Bloqueado { get; init; }   // true = ya entregado, no descaneable
+}
+
+public sealed record DescanBuscarResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<DescanBuscarItem> Resultados
+);
+
+public sealed record DescaneoAplicarResponse(
+    bool Ok,
+    string Message,
+    int Id,
+    string Wkname,
+    string Vin,
+    string Item,
+    int? Locacion,
+    string? OperadorRemovido,
+    string? EscaneadoEn
+);

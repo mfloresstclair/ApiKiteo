@@ -329,3 +329,31 @@ public interface ISchedulingRepository
     Task<(IEnumerable<dynamic> Semanas, IEnumerable<dynamic>? Detalle)> GetAsync(
         string? wkname, string cliente, CancellationToken ct = default);
 }
+
+public interface IDescaneoRepository
+{
+    /// <summary>
+    /// Busca items en VinBusiness_DB_macro con filtros opcionales.
+    /// modo: 1=escaneados | 2=sin escanear | 3=todos.
+    /// Ejecuta: Kit_vin_descan_buscar
+    /// </summary>
+    Task<IEnumerable<dynamic>> BuscarAsync(
+        string? wkname,
+        string? vin,
+        string? item,
+        string? operador,
+        string? cliente,
+        DateOnly? fechaDesde,
+        DateOnly? fechaHasta,
+        byte modo,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Descanea un item por su id. Registra auditoría en Boss_transactions.
+    /// Devuelve 1 fila con http_status, code, message [+ datos del item].
+    /// Ejecuta: Kit_vin_descaneo_aplicar
+    /// </summary>
+    Task<dynamic?> AplicarAsync(
+        int id, string username, string motivo,
+        CancellationToken ct = default);
+}

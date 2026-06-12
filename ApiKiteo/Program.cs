@@ -61,6 +61,7 @@ builder.Services.AddScoped<IWksRepository, WksRepository>();
 builder.Services.AddScoped<IMacroRepository, MacroRepository>();
 builder.Services.AddScoped<ILiberacionRepository, LiberacionRepository>();
 builder.Services.AddScoped<ISchedulingRepository, SchedulingRepository>();
+builder.Services.AddScoped<IDescaneoRepository, DescaneoRepository>();
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISemanasService, SemanasService>();
@@ -75,6 +76,7 @@ builder.Services.AddScoped<IMacroService, MacroService>();
 builder.Services.AddSingleton<MetricsCollector>();
 builder.Services.AddScoped<ILiberacionService, LiberacionService>();
 builder.Services.AddScoped<ISchedulingService, SchedulingService>();
+builder.Services.AddScoped<IDescaneoService, DescaneoService>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()
