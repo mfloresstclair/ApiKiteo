@@ -206,3 +206,32 @@ public sealed record DescaneoAplicarRequest(
     [Required] string Username,
     [Required] string Motivo
 );
+
+public sealed record ListaItemInput(
+    [Required] string Item,
+    string? Locacion
+);
+
+public sealed record ListaGuardarRequest(
+    [Required] string Wkname,
+    [Required] string Cliente,
+    [Required] string Tipo,
+    string? GruposJson,
+    string? Det,
+    string? FiltroLoc,
+    string? TextoBusqueda,
+    [Required] string CreadoPor,
+    [Required] List<ListaItemInput> Items
+);
+
+public sealed record ListaAgregarRequest(
+    [Required] List<ListaItemInput> Items
+);
+
+public sealed record ListaNotaRequest(
+    string? NotaArea
+);
+
+public sealed record ListaEliminarRequest(
+    [Required] string Username
+);

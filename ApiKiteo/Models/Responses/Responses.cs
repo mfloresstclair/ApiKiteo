@@ -96,11 +96,11 @@ public sealed record SemanaVinStatusItem
     public int? Locacion { get; init; }
     public string? Vin { get; init; }
     public string? Vindesc { get; init; }
+    public string? Sequence { get; init; }   // NUEVO — secuencia de Vines
     public decimal Porcentaje { get; init; }
-    public string? Entregado { get; init; }    // null en modo 1
-    public string? EntregadoPor { get; init; }    // null en modo 1
+    public string? Entregado { get; init; }
+    public string? EntregadoPor { get; init; }
 }
-
 public sealed record SemanaVinStatusResponse(
     bool Ok,
     string Wkname,
@@ -496,6 +496,7 @@ public sealed record BuscarCircuitoItem
     public string? Descripcion { get; init; }
     public string? Estado { get; init; }   // "PENDIENTE" | "KITEADO" | "ENTREGADO"
     public string? Operador { get; init; }
+    public string? EscaneadoEn { get; init; }   // NUEVO — fecha de escaneo (v.[update])
     public string? Entregado { get; init; }   // DateTime → string ISO, null si no entregado
     public string? EntregadoPor { get; init; }
     public bool EsMandarAFinal { get; init; }   // Locacion = 0
@@ -728,4 +729,57 @@ public sealed record DescaneoAplicarResponse(
     int? Locacion,
     string? OperadorRemovido,
     string? EscaneadoEn
+);
+public sealed record ListaActivaItem
+{
+    public int Id { get; init; }
+    public string Wkname { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public string? GruposJson { get; init; }
+    public string? Det { get; init; }
+    public string? FiltroLoc { get; init; }
+    public string? TextoBusqueda { get; init; }
+    public string? CreadoPor { get; init; }
+    public string? CreatedAt { get; init; }
+    public int PendienteActual { get; init; }
+    public int TotalItems { get; init; }
+}
+
+public sealed record ListasActivasResponse(
+    bool Ok,
+    IReadOnlyList<ListaActivaItem> Listas
+);
+
+public sealed record ListaGuardarResponse(bool Ok, int Id);
+public sealed record ListaAgregarResponse(bool Ok, int Insertados);
+public sealed record ListaOkResponse(bool Ok);
+
+public sealed record ListaHeaderItem
+{
+    public int Id { get; init; }
+    public string Wkname { get; init; } = string.Empty;
+    public string Cliente { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public string? GruposJson { get; init; }
+    public string? Det { get; init; }
+    public string? FiltroLoc { get; init; }
+    public string? CreadoPor { get; init; }
+    public string? CreatedAt { get; init; }
+}
+
+public sealed record ListaDetalleItem
+{
+    public int Id { get; init; }
+    public string Item { get; init; } = string.Empty;
+    public string? Locacion { get; init; }
+    public string? NotaArea { get; init; }
+    public int PendienteActual { get; init; }
+    public int TrabajadoActual { get; init; }
+}
+
+public sealed record ListaDetalleResponse(
+    bool Ok,
+    ListaHeaderItem Lista,
+    IReadOnlyList<ListaDetalleItem> Items
 );

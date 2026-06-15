@@ -64,4 +64,13 @@ public sealed class StoredProceduresOptions
     public string DescanBuscar { get; init; } = string.Empty;  // Kit_vin_descan_buscar
     public string DescaneoAplicar { get; init; } = string.Empty;  // Kit_vin_descaneo_aplicar
 
+     //── Lista Viva ────────────────────────────────────────────────────────────────
+     public string ListasActivas { get; init; } = string.Empty;  // Kit_listas_activas
+    public string ListaGuardar { get; init; } = string.Empty;  // Kit_lista_guardar
+    public string ListaDetalle { get; init; } = string.Empty;  // Kit_lista_detalle
+    public string ListaAgregar { get; init; } = string.Empty;  // Kit_lista_agregar
+    public string ListaNota { get; init; } = string.Empty;  // Kit_lista_nota
+    public string ListaQuitarItem { get; init; } = string.Empty;  // Kit_lista_quitar_item
+    public string ListaEliminar { get; init; } = string.Empty;  // Kit_lista_eliminar
+
 }

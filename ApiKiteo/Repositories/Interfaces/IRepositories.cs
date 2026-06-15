@@ -357,3 +357,38 @@ public interface IDescaneoRepository
         int id, string username, string motivo,
         CancellationToken ct = default);
 }
+public interface IListasRepository
+{
+    Task<IEnumerable<dynamic>> GetActivasAsync(
+        string? wkname, string? cliente, string? tipo,
+        CancellationToken ct = default);
+
+    Task<dynamic?> GuardarAsync(
+        string wkname, string cliente, string tipo,
+        string? gruposJson, string? det, string? filtroLoc,
+        string? textoBusqueda, string creadoPor, string jsonItems,
+        CancellationToken ct = default);
+
+    Task<(dynamic? Header, IEnumerable<dynamic> Items)> GetDetalleAsync(
+        int listaId, CancellationToken ct = default);
+
+    Task<dynamic?> AgregarItemsAsync(
+        int listaId, string jsonItems, CancellationToken ct = default);
+
+    Task<dynamic?> ActualizarNotaAsync(
+        int listaId, int itemId, string? notaArea,
+        CancellationToken ct = default);
+
+    Task<dynamic?> QuitarItemAsync(
+        int listaId, int itemId, CancellationToken ct = default);
+
+    Task<dynamic?> EliminarAsync(
+        int listaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Inline SQL — valida LPaccess en Central_Access.
+    /// No tiene SP equivalente.
+    /// </summary>
+    Task<bool> HasLpAccessAsync(
+        string username, CancellationToken ct = default);
+}

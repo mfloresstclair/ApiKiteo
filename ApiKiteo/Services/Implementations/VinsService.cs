@@ -152,6 +152,7 @@ public sealed class VinsService : IVinsService
                     Locacion = d.GetInt("Locacion"),
                     Vin = d.GetStr("Vin"),
                     Vindesc = NormalizeVindesc(d.GetStr("vinDesc")),
+                    Sequence = d.GetStr("sequence"),
                     Porcentaje = d.GetDecimal("Porcentaje") ?? 0m,
                     Entregado = d.GetStr("entregado"),
                     EntregadoPor = d.GetStr("entregadoPor")
@@ -226,6 +227,7 @@ public sealed class VinsService : IVinsService
                 .Select(d => new BuscarCircuitoItem
                 {
                     Locacion = d.GetInt("Locacion"),
+                    EscaneadoEn = FormatDateTime(d.GetValueOrDefault("escaneado_en")),
                     Vin = d.GetStr("Vin"),
                     Grupo = d.GetStr("Grupo"),
                     Vindesc = d.GetStr("vindesc"),

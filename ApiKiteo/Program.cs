@@ -8,6 +8,7 @@ using ApiKiteo.API.Services.Implementations;
 using ApiKiteo.API.Services.Interfaces;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using static ApiKiteo.API.Repositories.Interfaces.IDescaneoRepository;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ApiKiteo API  —  ASP.NET Core 8
@@ -62,6 +63,7 @@ builder.Services.AddScoped<IMacroRepository, MacroRepository>();
 builder.Services.AddScoped<ILiberacionRepository, LiberacionRepository>();
 builder.Services.AddScoped<ISchedulingRepository, SchedulingRepository>();
 builder.Services.AddScoped<IDescaneoRepository, DescaneoRepository>();
+builder.Services.AddScoped<IListasRepository, ListasRepository>();
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISemanasService, SemanasService>();
@@ -77,6 +79,7 @@ builder.Services.AddSingleton<MetricsCollector>();
 builder.Services.AddScoped<ILiberacionService, LiberacionService>();
 builder.Services.AddScoped<ISchedulingService, SchedulingService>();
 builder.Services.AddScoped<IDescaneoService, DescaneoService>();
+builder.Services.AddScoped<IListasService, ListasService>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()

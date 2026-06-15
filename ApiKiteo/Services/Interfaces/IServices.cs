@@ -212,3 +212,29 @@ public interface IDescaneoService
     Task<ServiceResult<DescaneoAplicarResponse>> AplicarAsync(
         DescaneoAplicarRequest request, CancellationToken ct = default);
 }
+public interface IListasService
+{
+    Task<ServiceResult<ListasActivasResponse>> GetActivasAsync(
+        string? wkname, string? cliente, string? tipo,
+        CancellationToken ct = default);
+
+    Task<ServiceResult<ListaGuardarResponse>> GuardarAsync(
+        ListaGuardarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaDetalleResponse>> GetDetalleAsync(
+        int listaId, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaAgregarResponse>> AgregarItemsAsync(
+        int listaId, ListaAgregarRequest request,
+        CancellationToken ct = default);
+
+    Task<ServiceResult<ListaOkResponse>> ActualizarNotaAsync(
+        int listaId, int itemId, string? notaArea,
+        CancellationToken ct = default);
+
+    Task<ServiceResult<ListaOkResponse>> QuitarItemAsync(
+        int listaId, int itemId, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaOkResponse>> EliminarAsync(
+        int listaId, string username, CancellationToken ct = default);
+}
