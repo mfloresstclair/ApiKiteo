@@ -773,6 +773,9 @@ public sealed record ListaDetalleItem
     public int Id { get; init; }
     public string Item { get; init; } = string.Empty;
     public string? Locacion { get; init; }
+       public string? Etiqueta { get; init; }
+   public string? CreadoPor { get; init; }
+    public string? CreatedAt { get; init; }
     public string? NotaArea { get; init; }
     public int PendienteActual { get; init; }
     public int TrabajadoActual { get; init; }

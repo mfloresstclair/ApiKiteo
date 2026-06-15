@@ -1,4 +1,5 @@
 using ApiKiteo.API.Models.Responses;
+using Azure.Core;
 
 namespace ApiKiteo.API.Repositories.Interfaces;
 
@@ -373,7 +374,7 @@ public interface IListasRepository
         int listaId, CancellationToken ct = default);
 
     Task<dynamic?> AgregarItemsAsync(
-        int listaId, string jsonItems, CancellationToken ct = default);
+        int listaId, string jsonItems, string? etiqueta, string? creadoPor, CancellationToken ct = default);
 
     Task<dynamic?> ActualizarNotaAsync(
         int listaId, int itemId, string? notaArea,

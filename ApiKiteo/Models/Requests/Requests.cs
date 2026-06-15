@@ -225,7 +225,9 @@ public sealed record ListaGuardarRequest(
 );
 
 public sealed record ListaAgregarRequest(
-    [Required] List<ListaItemInput> Items
+    [Required] List<ListaItemInput> Items,
+    string? Etiqueta = null,
+    string? CreadoPor = null
 );
 
 public sealed record ListaNotaRequest(

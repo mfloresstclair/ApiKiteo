@@ -81,12 +81,13 @@ public sealed class ListasRepository : IListasRepository
 
     // ── POST /listas/:id/items ─────────────────────────────────────────────────
     public async Task<dynamic?> AgregarItemsAsync(
-        int listaId, string jsonItems, CancellationToken ct = default)
+       int listaId, string jsonItems, string? etiqueta, string? creadoPor,
+       CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryFirstOrDefaultAsync(
             _sp.ListaAgregar,
-            new { lista_id = listaId, jsonItems },   // ← FIX: el SP espera @jsonItems
+            new { lista_id = listaId, jsonItems, etiqueta, creado_por = creadoPor },   // ← FIX: el SP espera @jsonItems
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }

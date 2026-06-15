@@ -138,6 +138,9 @@ public sealed class ListasService : IListasService
                     Id              = d.GetInt("id")               ?? 0,
                     Item            = d.GetStr("item")             ?? string.Empty,
                     Locacion        = d.GetStr("locacion"),
+                    Etiqueta = d.GetStr("etiqueta"),
+                    CreadoPor = d.GetStr("creado_por"),
+                    CreatedAt = d.GetStr("created_at"),  // o FormatDateTime si existe el helper
                     NotaArea        = d.GetStr("nota_area"),
                     PendienteActual = d.GetInt("pendiente_actual") ?? 0,
                     TrabajadoActual = d.GetInt("trabajado_actual") ?? 0
@@ -165,7 +168,7 @@ public sealed class ListasService : IListasService
             // FIX 1: mismo patrón — array raíz, camelCase, sin wrapper
             var jsonItems = JsonSerializer.Serialize(request.Items, _camelCase);
 
-            var row = await _repo.AgregarItemsAsync(listaId, jsonItems, ct);
+            var row = await _repo.AgregarItemsAsync(listaId, jsonItems, request.Etiqueta, request.CreadoPor, ct);
 
             if (row is null)
                 return ServiceResult<ListaAgregarResponse>.Fail(
