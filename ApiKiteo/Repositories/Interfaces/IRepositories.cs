@@ -383,7 +383,7 @@ public interface IListasRepository
         int listaId, int itemId, CancellationToken ct = default);
 
     Task<dynamic?> EliminarAsync(
-        int listaId, CancellationToken ct = default);
+        int listaId, string username, CancellationToken ct = default);
 
     /// <summary>
     /// Inline SQL — valida LPaccess en Central_Access.

@@ -242,7 +242,7 @@ public sealed class ListasService : IListasService
                 return ServiceResult<ListaOkResponse>.Fail(
                     403, "Requiere LPaccess para eliminar listas.", ErrorCodes.Kiteo403);
 
-            var row = await _repo.EliminarAsync(listaId, ct);
+            var row = await _repo.EliminarAsync(listaId, username, ct);   // ← FIX: faltaba username
 
             _logger.LogInformation(
                 "Lista eliminada | id={Id} por={U}", listaId, username);

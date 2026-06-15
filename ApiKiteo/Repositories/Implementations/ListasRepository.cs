@@ -121,12 +121,12 @@ public sealed class ListasRepository : IListasRepository
     // ── DELETE /listas/:id ────────────────────────────────────────────────────
 
     public async Task<dynamic?> EliminarAsync(
-        int listaId, CancellationToken ct = default)
+        int listaId, string username, CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryFirstOrDefaultAsync(
             _sp.ListaEliminar,
-            new { lista_id = listaId },
+            new { lista_id = listaId, username },   // ← FIX: faltaba @username
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
