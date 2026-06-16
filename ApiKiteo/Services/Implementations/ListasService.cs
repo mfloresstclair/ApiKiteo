@@ -183,7 +183,11 @@ public sealed class ListasService : IListasService
                     httpStatus, message, d.GetStr("code") ?? string.Empty);
 
             return ServiceResult<ListaAgregarResponse>.Ok(
-                new ListaAgregarResponse(true, d.GetInt("insertados") ?? 0));
+                new ListaAgregarResponse(true,
+                d.GetInt("items_insertados") ?? 0,
+d.GetInt("items_movidos") ?? 0));
+
+
         }
         catch (Exception ex)
         {

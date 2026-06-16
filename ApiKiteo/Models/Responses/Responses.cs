@@ -752,7 +752,7 @@ public sealed record ListasActivasResponse(
 );
 
 public sealed record ListaGuardarResponse(bool Ok, int Id);
-public sealed record ListaAgregarResponse(bool Ok, int Insertados);
+public sealed record ListaAgregarResponse(bool Ok, int Insertados, int Movidos = 0);
 public sealed record ListaOkResponse(bool Ok);
 
 public sealed record ListaHeaderItem
