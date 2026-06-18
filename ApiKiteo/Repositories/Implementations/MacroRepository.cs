@@ -27,24 +27,24 @@ public sealed class MacroRepository : IMacroRepository
         // SQL inline justificado: no existe SP para esta operación y toda la
         // interpolación es via parámetros Dapper — sin riesgo de SQL injection.
         var sql = new StringBuilder("""
-            SELECT
-                WkName,
-                Vin,
-                vinDesc,
-                overlay,
-                Grupo,
-                item,
-                item_Descripcion        AS ItemDescripcion,
-                Locacion,
-                tipo,
-                Cliente,
-                Operador,
-                recorddate,
-                Entregado,
-                Entregado_por           AS EntregadoPor
-            FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
-            WHERE 1 = 1
-            """);
+    SELECT
+        WkName,
+        Vin,
+        vinDesc,
+        overlay,
+        Grupo,
+        item,
+        item_Descripcion        AS ItemDescripcion,
+        Locacion,
+        tipo,
+        Cliente,
+        Operador,
+        recorddate,
+        Entregado,
+        Entregado_por           AS EntregadoPor
+    FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
+    WHERE ISNULL(Estatus, 1) = 1
+    """);
 
         var p = new DynamicParameters();
 
