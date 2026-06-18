@@ -44,7 +44,9 @@ public interface IVinsRepository
         string wkname, CancellationToken ct = default);
 
     Task<IEnumerable<dynamic>> GetSemanaGrpFaltantesAsync(
-        string wkname, string jsonGrupos, string det, CancellationToken ct = default);
+        string wkname, string jsonGrupos, string det,
+        string? descripcion = null,           // NUEVO
+        CancellationToken ct = default);
     Task<IEnumerable<dynamic>> GetSemanaVinStatusAsync(
         string wkname, string cliente, string tipo,
         byte modo = 1,    // 1=pending | 2=delivered | 3=all

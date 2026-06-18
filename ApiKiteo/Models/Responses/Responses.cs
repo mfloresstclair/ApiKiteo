@@ -65,9 +65,13 @@ public sealed record SemanaLocResponse(
 public sealed record SemanaGrpStatusItem
 {
     public string Grupo { get; init; } = string.Empty;
-    public string? Vindesc { get; init; }   // ventana/window normalizada — ej: "10WDO", "BodyCVZC"
+    public string? Vindesc { get; init; }
     public int Vines { get; init; }
     public decimal Porcentaje { get; init; }
+    public string? Descripcion { get; init; }  // "BodyCVZC"/"BodyCVZD"/null
+    public string? Motherharness { get; init; }  // "10056355BB"/null
+    public int TotalCircuitos { get; init; }  // totlinecnt del SP
+    public int EscaneadosCircuitos { get; init; }  // escaneados_circuitos del SP
 }
 
 public sealed record SemanaGrpStatusResponse(

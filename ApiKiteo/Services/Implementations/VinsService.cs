@@ -66,7 +66,11 @@ public sealed class VinsService : IVinsService
                     Grupo = d.GetStr("Grupo") ?? d.GetStr("grupo") ?? string.Empty,
                     Vindesc = NormalizeVindesc(d.GetStr("vindesc")),
                     Vines = d.GetInt("vines") ?? 0,
-                    Porcentaje = d.GetDecimal("Porcentaje") ?? 0m
+                    Porcentaje = d.GetDecimal("Porcentaje") ?? 0m,
+                    Descripcion = d.GetStr("descripcion"),
+                    Motherharness = d.GetStr("motherharness"),
+                    TotalCircuitos = d.GetInt("total_circuitos") ?? 0,
+                    EscaneadosCircuitos = d.GetInt("escaneados_circuitos") ?? 0
                 })
                 .ToList();
 
@@ -93,7 +97,9 @@ public sealed class VinsService : IVinsService
             var det = request.Det ?? "1";
 
             var rows = await _repo.GetSemanaGrpFaltantesAsync(
-                request.Wkname, jsonGrupos, det, ct);
+                request.Wkname, jsonGrupos, det,
+                request.Descripcion,   // NUEVO
+                ct);
 
             // Resultado genérico — columnas varían según det
             var resultados = rows

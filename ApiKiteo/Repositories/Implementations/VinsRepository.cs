@@ -42,16 +42,16 @@ public sealed class VinsRepository : IVinsRepository
     }
 
     public async Task<IEnumerable<dynamic>> GetSemanaGrpFaltantesAsync(
-        string wkname, string jsonGrupos, string det, CancellationToken ct = default)
+        string wkname, string jsonGrupos, string det,
+        string? descripcion = null,
+        CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
-
-        // El SP espera: @wkname, @jsonGrupos, @det
         return await conn.QueryAsync(
             _sp.GetSemanaGrpFaltantes,
-            new { wkname, jsonGrupos, det },
+            new { wkname, jsonGrupos, det, descripcion },   // NUEVO: descripcion al SP
             commandType: System.Data.CommandType.StoredProcedure,
-            commandTimeout: 60);   // puede tomar más tiempo (cálculo de faltantes)
+            commandTimeout: 60);
     }
 
     public async Task<IEnumerable<dynamic>> GetSemanaVinStatusAsync(

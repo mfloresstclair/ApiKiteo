@@ -18,9 +18,10 @@ public sealed record AuthLoginRequest(
 
 /// <summary>POST /semana_grp_faltantes</summary>
 public sealed record SemanaGrpFaltantesRequest(
-    [Required] string Wkname,
+    string Wkname,
+    IReadOnlyList<string> Grupos,
     string? Det,
-    [Required] List<string> Grupos
+    string? Descripcion   // NUEVO: "BodyCVZC" | "BodyCVZD" | null
 );
 
 // ─── Escaneo ──────────────────────────────────────────────────────────────────
