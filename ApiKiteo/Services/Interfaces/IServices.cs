@@ -192,6 +192,8 @@ public interface ILiberacionService
 
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
+    Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(
+    int semana, int anio, CancellationToken ct = default);
 }
 public interface ISchedulingService
 {

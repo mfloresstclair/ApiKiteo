@@ -299,4 +299,54 @@ public sealed class LiberacionService : ILiberacionService
             _ => decimal.TryParse(val.ToString(), out var p) ? p : 0m
         };
     }
+    // ── GET /api/liberacion/fechacorte ────────────────────────────────────────
+
+    public async Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(
+        int semana, int anio, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "GetFechaCorte | semana={S} anio={A}", semana, anio);
+
+            var fecha = await _repo.GetFechaCorteAsync(semana, anio, ct);
+
+            if (fecha is null)
+            {
+                _logger.LogInformation(
+                    "GetFechaCorte | Sin corte para semana={S} anio={A}", semana, anio);
+
+                return ServiceResult<FechaCorteDerivadaResponse>.Ok(
+                    new FechaCorteDerivadaResponse(
+                        Ok: false,
+                        Semana: semana,
+                        Anio: anio,
+                        Fechacorte: null,
+                        Mensaje: $"Sin corte en SytelineOut para semana {semana} / {anio}. " +
+                                    "El corte aún no ha ocurrido."));
+            }
+
+            string fechaStr = fecha.Value.ToString("yyyy-MM-dd");
+
+            _logger.LogInformation(
+                "GetFechaCorte OK | semana={S} anio={A} fecha={F}",
+                semana, anio, fechaStr);
+
+            return ServiceResult<FechaCorteDerivadaResponse>.Ok(
+                new FechaCorteDerivadaResponse(
+                    Ok: true,
+                    Semana: semana,
+                    Anio: anio,
+                    Fechacorte: fechaStr,
+                    Mensaje: $"FechaCorte derivada de SytelineOut: {fechaStr}"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error GetFechaCorte semana={S} anio={A}", semana, anio);
+
+            return ServiceResult<FechaCorteDerivadaResponse>.Fail(
+                500, "Error al consultar SytelineOut.", ErrorCodes.Kiteo500);
+        }
+    }
 }

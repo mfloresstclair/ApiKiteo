@@ -109,4 +109,30 @@ public sealed class LiberacionRepository : ILiberacionRepository
             commandTimeout: 30);
     }
 
+    public async Task<DateOnly?> GetFechaCorteAsync(
+        int semana, int anio, CancellationToken ct = default)
+    {
+        // Inline SQL — BuildPlan.dbo.SytelineOut está en el mismo SQL Server.
+        // Blank4 formato: [semana sin cero][año 4 dígitos]
+        // "272026" = semana 27 año 2026 | "82026" = semana 8 año 2026
+        const string sql = @"
+            SELECT CAST(MAX(DateFetch) AS date)
+            FROM BuildPlan.dbo.SytelineOut
+            WHERE LEN(LTRIM(RTRIM(Blank4))) BETWEEN 5 AND 6
+              AND RIGHT(LTRIM(RTRIM(Blank4)), 4) = @anio
+              AND TRY_CONVERT(int,
+                    LEFT(LTRIM(RTRIM(Blank4)),
+                         LEN(LTRIM(RTRIM(Blank4))) - 4)
+                  ) = @semana";
+
+        using var conn = _db.CreateConnection();
+        var result = await conn.QueryFirstOrDefaultAsync<DateTime?>(
+            sql,
+            new { semana, anio = anio.ToString() },
+            commandTimeout: 15);
+
+        if (result is null) return null;
+        return DateOnly.FromDateTime(result.Value);
+    }
+
 }

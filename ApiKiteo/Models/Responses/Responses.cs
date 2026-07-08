@@ -790,3 +790,10 @@ public sealed record ListaDetalleResponse(
     ListaHeaderItem Lista,
     IReadOnlyList<ListaDetalleItem> Items
 );
+public sealed record FechaCorteDerivadaResponse(
+    bool Ok,
+    int Semana,
+    int Anio,
+    string? Fechacorte,  // null si el corte aún no ocurrió
+    string Mensaje
+);

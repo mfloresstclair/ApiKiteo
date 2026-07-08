@@ -320,6 +320,13 @@ public interface ILiberacionRepository
     /// </summary>
     Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default);
+
+    /// <summary>
+    /// Busca MAX(DateFetch) en BuildPlan.dbo.SytelineOut para semana+año.
+    /// Inline SQL — no SP (cross-database, solo lectura).
+    /// </summary>
+    Task<DateOnly?> GetFechaCorteAsync(
+        int semana, int anio, CancellationToken ct = default);
 }
 public interface ISchedulingRepository
 {

@@ -165,5 +165,35 @@ public sealed class LiberacionController : KiteoBaseController
 
         return FromResult(await _service.LiberacionListAsync(cliente, ct));
     }
+    /// <summary>
+    /// Deriva la fechacorte consultando MAX(DateFetch) en BuildPlan.dbo.SytelineOut.
+    /// El WinForms lo usa para pre-llenar y validar antes de dejar al ingeniero guardar.
+    ///
+    /// Blank4 formato: [semana sin cero][año] → "272026" = s27/2026 | "82026" = s8/2026
+    ///
+    /// Response ok=false + fechacorte=null → corte aún no ocurrió, bloquear en UI.
+    /// </summary>
+    [HttpGet("fechacorte")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetFechaCorte(
+        [FromQuery] int semana,
+        [FromQuery] int anio,
+        CancellationToken ct)
+    {
+        if (semana < 1 || semana > 53)
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'semana' debe estar entre 1 y 53.",
+                ErrorCodes.Kiteo400));
+
+        if (anio < 2024 || anio > 2035)
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'anio' debe estar entre 2024 y 2035.",
+                ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.GetFechaCorteAsync(semana, anio, ct));
+    }
+
+
 
 }
