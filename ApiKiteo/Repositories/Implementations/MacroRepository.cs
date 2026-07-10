@@ -31,6 +31,7 @@ public sealed class MacroRepository : IMacroRepository
         WkName,
         Vin,
         vinDesc,
+        motherharness           AS Motherharness,
         overlay,
         Grupo,
         item,
