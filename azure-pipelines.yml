@@ -1,0 +1,99 @@
+trigger:
+- main
+
+pool:
+  name: Default
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore'
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build'
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Publish ApiKiteo'
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: false
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+- task: PowerShell@2
+  displayName: 'Publish ApiKiteo to NAS'
+  inputs:
+    targetType: 'inline'
+    script: |
+
+      $AppName = "ApiKiteo"
+
+      $TargetRoot = "\\stclair.stclairtech.com\nas\Software\SCT Apps"
+
+      $TargetFolder = Join-Path $TargetRoot $AppName
+
+      Write-Host "Target Folder:"
+      Write-Host $TargetFolder
+
+      if (!(Test-Path $TargetFolder))
+      {
+          Write-Host "Creating folder..."
+          New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
+      }
+
+      if (Test-Path "$TargetFolder\*")
+      {
+          Write-Host "Removing previous files..."
+          Remove-Item "$TargetFolder\*" -Recurse -Force
+      }
+
+      Write-Host "Copying files..."
+
+      Copy-Item `
+          -Path "$(Build.ArtifactStagingDirectory)\*" `
+          -Destination $TargetFolder `
+          -Recurse `
+          -Force
+
+      Write-Host "Publish completed successfully."
+
+- task: PowerShell@2
+  displayName: 'Trigger ApiKiteo Deploy'
+  inputs:
+    targetType: 'inline'
+    script: |
+
+      $headers = @{
+          "X-Deploy-Token" = "$(DeployToken)"
+      }
+
+      Write-Host "Triggering deploy on smxlin01..."
+
+      $response = Invoke-WebRequest `
+          -Uri "http://smxlin01.stclair.stclairtech.com:5001/deploy/apikiteo" `
+          -Method POST `
+          -Headers $headers `
+          -UseBasicParsing `
+          -TimeoutSec 600
+
+      Write-Host "HTTP Status: $($response.StatusCode)"
+      Write-Host "Response:"
+      Write-Host $response.Content
