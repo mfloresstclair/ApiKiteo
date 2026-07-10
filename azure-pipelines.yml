@@ -86,10 +86,16 @@ stages:
   - job: deployBackup
     pool:
       name: Default
-      demands: agent.name -equals itdev-pc-azdo    # corre EN itdev-pc (deploy local)
+      demands: agent.name -equals itdev-pc-azdo
     steps:
-      - download: current
-        artifact: drop
+      # --- Descarga explícita del artefacto (compatible con DevOps Server) ---
+      - task: DownloadBuildArtifacts@0
+        displayName: 'Download artifact drop'
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'drop'
+          downloadPath: '$(System.ArtifactsDirectory)'
 
       - task: PowerShell@2
         displayName: 'Deploy + validar BACKUP'
@@ -98,32 +104,42 @@ stages:
           script: |
             $ErrorActionPreference = "Stop"
             $target = "$(backupTargetDir)"
+            $source = "$(System.ArtifactsDirectory)\drop"
+
+            # Verificar que el artefacto se descargó ANTES de tocar nada
+            if (!(Test-Path "$source")) {
+                throw "No se encontró el artefacto en $source. Abortando (backup intacto)."
+            }
+            $exe = Get-ChildItem "$source" -Recurse -Filter "ApiKiteo.API.exe" -ErrorAction SilentlyContinue
+            if (-not $exe) {
+                throw "El artefacto no contiene ApiKiteo.API.exe. Abortando (backup intacto)."
+            }
+            Write-Host "Artefacto OK: $($exe.FullName)"
 
             Write-Host "==> Deteniendo servicio $(backupServiceName)..."
             Stop-Service "$(backupServiceName)" -Force
             Start-Sleep -Seconds 3
 
-            # Respaldo de la versión actual (para rollback)
+            # Respaldo (rollback)
             $bak = "${target}_old"
             if (Test-Path $bak) { Remove-Item $bak -Recurse -Force }
             Copy-Item $target $bak -Recurse -Force
             Write-Host "Respaldo creado en $bak"
 
-            # Limpiar carpeta y copiar la nueva versión desde el artefacto
-            Write-Host "==> Copiando nueva versión desde el artefacto..."
+            # Limpiar y copiar
+            Write-Host "==> Copiando nueva versión..."
             Get-ChildItem $target -Recurse | Remove-Item -Recurse -Force
-            Copy-Item "$(Pipeline.Workspace)\drop\*" $target -Recurse -Force
+            Copy-Item "$source\*" $target -Recurse -Force
 
             Write-Host "==> Iniciando servicio..."
             Start-Service "$(backupServiceName)"
             Start-Sleep -Seconds 12
 
             Write-Host "==> Health check backup (puerto $(backupPort))..."
-            $h = Invoke-WebRequest -Uri "http://localhost:$(backupPort)$(healthPath)" `
-                   -UseBasicParsing -TimeoutSec 30
-            if ($h.StatusCode -ne 200) { throw "Health check backup falló: $($h.StatusCode)" }
-
+            $h = Invoke-WebRequest -Uri "http://localhost:$(backupPort)$(healthPath)" -UseBasicParsing -TimeoutSec 30
+            if ($h.StatusCode -ne 200) { throw "Health backup falló: $($h.StatusCode)" }
             Write-Host "BACKUP VALIDADO OK"
+
 
 # ============================================================
 #  3) DEPLOY MASTER (webhook smxlin01) - solo si backup pasó
