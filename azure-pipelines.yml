@@ -1,99 +1,169 @@
 trigger:
 - master
 
-pool:
-  name: Default
-
 variables:
   buildConfiguration: 'Release'
+  masterHost: 'smxlin01.stclair.stclairtech.com'
+  backupPort: '5000'                        # puerto del servicio en itdev-pc
+  masterPort: '5081'                        # puerto del contenedor en smxlin01
+  healthPath: '/swagger/v3/swagger.json'
+  backupServiceName: 'Api_Kiteo_bkp'
+  backupTargetDir: 'C:\APIs\API'
 
-steps:
+stages:
 
-- task: DotNetCoreCLI@2
-  displayName: 'Restore'
-  inputs:
-    command: 'restore'
-    projects: '**/*.csproj'
+# ============================================================
+#  1) BUILD & PUBLISH TO NAS
+# ============================================================
+- stage: Build
+  displayName: 'Build & Publish to NAS'
+  jobs:
+  - job: build
+    pool:
+      name: Default
+      demands: agent.name -equals itdev-pc-azdo    # build en Win11 (.NET 8)
+    steps:
+      - task: DotNetCoreCLI@2
+        displayName: 'Restore'
+        inputs:
+          command: 'restore'
+          projects: '**/*.csproj'
 
-- task: DotNetCoreCLI@2
-  displayName: 'Build'
-  inputs:
-    command: 'build'
-    projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration) --no-restore'
+      - task: DotNetCoreCLI@2
+        displayName: 'Build'
+        inputs:
+          command: 'build'
+          projects: '**/*.csproj'
+          arguments: '--configuration $(buildConfiguration) --no-restore'
 
-- task: DotNetCoreCLI@2
-  displayName: 'Publish ApiKiteo'
-  inputs:
-    command: 'publish'
-    publishWebProjects: false
-    projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-    zipAfterPublish: false
+      - task: DotNetCoreCLI@2
+        displayName: 'Publish ApiKiteo'
+        inputs:
+          command: 'publish'
+          publishWebProjects: false
+          projects: '**/*.csproj'
+          arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+          zipAfterPublish: false
 
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact'
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact'
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: 'drop'
+          publishLocation: 'Container'
 
-- task: PowerShell@2
-  displayName: 'Publish ApiKiteo to NAS'
-  inputs:
-    targetType: 'inline'
-    script: |
+      - task: PowerShell@2
+        displayName: 'Publish ApiKiteo to NAS'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $AppName = "ApiKiteo"
+            $TargetRoot = "\\stclair.stclairtech.com\nas\Software\SCT Apps"
+            $TargetFolder = Join-Path $TargetRoot $AppName
 
-      $AppName = "ApiKiteo"
+            Write-Host "Target Folder: $TargetFolder"
 
-      $TargetRoot = "\\stclair.stclairtech.com\nas\Software\SCT Apps"
+            if (!(Test-Path $TargetFolder)) {
+                New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
+            }
+            if (Test-Path "$TargetFolder\*") {
+                Remove-Item "$TargetFolder\*" -Recurse -Force
+            }
 
-      $TargetFolder = Join-Path $TargetRoot $AppName
+            Copy-Item -Path "$(Build.ArtifactStagingDirectory)\*" `
+                      -Destination $TargetFolder -Recurse -Force
 
-      Write-Host "Target Folder:"
-      Write-Host $TargetFolder
+            Write-Host "Publish completed successfully."
 
-      if (!(Test-Path $TargetFolder))
-      {
-          Write-Host "Creating folder..."
-          New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
-      }
+# ============================================================
+#  2) DEPLOY BACKUP (local en itdev-pc)
+# ============================================================
+- stage: DeployBackup
+  displayName: 'Deploy to Backup (itdev-pc)'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: deployBackup
+    pool:
+      name: Default
+      demands: agent.name -equals itdev-pc-azdo    # corre EN itdev-pc (deploy local)
+    steps:
+      - download: current
+        artifact: drop
 
-      if (Test-Path "$TargetFolder\*")
-      {
-          Write-Host "Removing previous files..."
-          Remove-Item "$TargetFolder\*" -Recurse -Force
-      }
+      - task: PowerShell@2
+        displayName: 'Deploy + validar BACKUP'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $ErrorActionPreference = "Stop"
+            $target = "$(backupTargetDir)"
 
-      Write-Host "Copying files..."
+            Write-Host "==> Deteniendo servicio $(backupServiceName)..."
+            Stop-Service "$(backupServiceName)" -Force
+            Start-Sleep -Seconds 3
 
-      Copy-Item `
-          -Path "$(Build.ArtifactStagingDirectory)\*" `
-          -Destination $TargetFolder `
-          -Recurse `
-          -Force
+            # Respaldo de la versión actual (para rollback)
+            $bak = "${target}_old"
+            if (Test-Path $bak) { Remove-Item $bak -Recurse -Force }
+            Copy-Item $target $bak -Recurse -Force
+            Write-Host "Respaldo creado en $bak"
 
-      Write-Host "Publish completed successfully."
+            # Limpiar carpeta y copiar la nueva versión desde el artefacto
+            Write-Host "==> Copiando nueva versión desde el artefacto..."
+            Get-ChildItem $target -Recurse | Remove-Item -Recurse -Force
+            Copy-Item "$(Pipeline.Workspace)\drop\*" $target -Recurse -Force
 
-- task: PowerShell@2
-  displayName: 'Trigger ApiKiteo Deploy'
-  inputs:
-    targetType: 'inline'
-    script: |
+            Write-Host "==> Iniciando servicio..."
+            Start-Service "$(backupServiceName)"
+            Start-Sleep -Seconds 12
 
-      $headers = @{
-          "X-Deploy-Token" = "$(DeployToken)"
-      }
+            Write-Host "==> Health check backup (puerto $(backupPort))..."
+            $h = Invoke-WebRequest -Uri "http://localhost:$(backupPort)$(healthPath)" `
+                   -UseBasicParsing -TimeoutSec 30
+            if ($h.StatusCode -ne 200) { throw "Health check backup falló: $($h.StatusCode)" }
 
-      Write-Host "Triggering deploy on smxlin01..."
+            Write-Host "BACKUP VALIDADO OK"
 
-      $response = Invoke-WebRequest `
-          -Uri "http://smxlin01.stclair.stclairtech.com:5001/deploy/apikiteo" `
-          -Method POST `
-          -Headers $headers `
-          -UseBasicParsing `
-          -TimeoutSec 600
+# ============================================================
+#  3) DEPLOY MASTER (webhook smxlin01) - solo si backup pasó
+# ============================================================
+- stage: DeployMaster
+  displayName: 'Deploy to Master (smxlin01)'
+  dependsOn: DeployBackup
+  condition: succeeded()             # SOLO si el backup pasó las validaciones
+  jobs:
+  - job: deployMaster
+    pool:
+      name: Default
+      demands: agent.name -equals itdev-pc-azdo    # solo hace HTTP; cualquier agente Win sirve
+    steps:
+      - task: PowerShell@2
+        displayName: 'Trigger + validar MASTER'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $ErrorActionPreference = "Stop"
+            $headers = @{ "X-Deploy-Token" = "$(DeployToken)" }
 
-      Write-Host "HTTP Status: $($response.StatusCode)"
-      Write-Host "Response:"
-      Write-Host $response.Content
+            Write-Host "==> Disparando deploy en MASTER ($(masterHost))..."
+            $resp = Invoke-WebRequest -Uri "http://$(masterHost):5001/deploy/apikiteo" `
+                     -Method POST -Headers $headers -UseBasicParsing -TimeoutSec 600
+            Write-Host "HTTP Status: $($resp.StatusCode)"
+            Write-Host $resp.Content
+
+            # Validación 1: el update.sh terminó con code 0 (HTTP 200 no basta)
+            $json = $resp.Content | ConvertFrom-Json
+            if ($json.code -ne 0) {
+                Write-Error "Master deploy FALLÓ. code=$($json.code). STDERR: $($json.stderr)"
+                exit 1
+            }
+
+            # Validación 2: health probe real al contenedor
+            Start-Sleep -Seconds 12
+            Write-Host "==> Health check master (puerto $(masterPort))..."
+            $h = Invoke-WebRequest -Uri "http://$(masterHost):$(masterPort)$(healthPath)" `
+                   -UseBasicParsing -TimeoutSec 30
+            if ($h.StatusCode -ne 200) { throw "Health check master falló: $($h.StatusCode)" }
+
+            Write-Host "MASTER VALIDADO OK - despliegue completo"
