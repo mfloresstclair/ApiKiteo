@@ -104,17 +104,15 @@ stages:
           script: |
             $ErrorActionPreference = "Stop"
             $target = "$(backupTargetDir)"
-            $source = "$(System.ArtifactsDirectory)\drop"
+            $downloadRoot = "$(System.ArtifactsDirectory)\drop"
 
-            # Verificar que el artefacto se descargó ANTES de tocar nada
-            if (!(Test-Path "$source")) {
-                throw "No se encontró el artefacto en $source. Abortando (backup intacto)."
-            }
-            $exe = Get-ChildItem "$source" -Recurse -Filter "ApiKiteo.API.exe" -ErrorAction SilentlyContinue
+            # --- Localizar la carpeta REAL que contiene el .exe (maneja anidamiento) ---
+            $exe = Get-ChildItem "$downloadRoot" -Recurse -Filter "ApiKiteo.API.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
             if (-not $exe) {
-                throw "El artefacto no contiene ApiKiteo.API.exe. Abortando (backup intacto)."
+                throw "No se encontró ApiKiteo.API.exe en el artefacto. Abortando (backup intacto)."
             }
-            Write-Host "Artefacto OK: $($exe.FullName)"
+            $source = $exe.Directory.FullName          # ← la carpeta que realmente tiene el exe
+            Write-Host "Fuente detectada: $source"
 
             Write-Host "==> Deteniendo servicio $(backupServiceName)..."
             Stop-Service "$(backupServiceName)" -Force
@@ -126,10 +124,15 @@ stages:
             Copy-Item $target $bak -Recurse -Force
             Write-Host "Respaldo creado en $bak"
 
-            # Limpiar y copiar
+            # Limpiar y copiar desde la carpeta correcta (contenido, sin anidar)
             Write-Host "==> Copiando nueva versión..."
             Get-ChildItem $target -Recurse | Remove-Item -Recurse -Force
             Copy-Item "$source\*" $target -Recurse -Force
+
+            # Verificar que el exe quedó en el nivel correcto
+            if (!(Test-Path "$target\ApiKiteo.API.exe")) {
+                throw "El exe no quedó en $target. Revisar estructura del artefacto."
+            }
 
             Write-Host "==> Iniciando servicio..."
             Start-Service "$(backupServiceName)"
