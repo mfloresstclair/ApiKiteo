@@ -115,8 +115,22 @@ stages:
             Write-Host "Fuente detectada: $source"
 
             Write-Host "==> Deteniendo servicio $(backupServiceName)..."
-            Stop-Service "$(backupServiceName)" -Force
-            Start-Sleep -Seconds 3
+            $stopResult = & sc.exe stop "$(backupServiceName)" 2>&1
+            Write-Host $stopResult
+            if ($LASTEXITCODE -ne 0) {
+                throw "No se pudo detener el servicio $(backupServiceName) (sc.exe exit $LASTEXITCODE). Backup intacto."
+            }
+            # Esperar a que el servicio quede STOPPED (sc.exe stop es asíncrono)
+                $intentos = 0
+                do {
+                Start-Sleep -Seconds 2
+                    $estado = (& sc.exe query "$(backupServiceName)" | Select-String "STATE").ToString()
+                    $intentos++
+                } while ($estado -notmatch "STOPPED" -and $intentos -lt 10)
+                if ($estado -notmatch "STOPPED") {
+                    throw "El servicio no llegó a STOPPED tras 20s. Abortando (backup intacto)."
+                }
+                Write-Host "Servicio detenido correctamente."
 
             # Respaldo (rollback)
             $bak = "${target}_old"
@@ -135,7 +149,11 @@ stages:
             }
 
             Write-Host "==> Iniciando servicio..."
-            Start-Service "$(backupServiceName)"
+            $startResult = & sc.exe start "$(backupServiceName)" 2>&1
+            Write-Host $startResult
+            if ($LASTEXITCODE -ne 0) {
+                throw "No se pudo iniciar el servicio $(backupServiceName) (sc.exe exit $LASTEXITCODE)."
+            }
             Start-Sleep -Seconds 12
 
             Write-Host "==> Health check backup (puerto $(backupPort))..."
