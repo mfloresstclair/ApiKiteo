@@ -1,8 +1,9 @@
-﻿using Dapper;
-using Microsoft.Extensions.Options;
-using ApiKiteo.API.Configuration;
+﻿using ApiKiteo.API.Configuration;
 using ApiKiteo.API.Infrastructure.Database;
 using ApiKiteo.API.Repositories.Interfaces;
+using Dapper;
+using Microsoft.Extensions.Options;
+using System.Data;
 
 namespace ApiKiteo.API.Repositories.Implementations;
 
@@ -86,13 +87,13 @@ public sealed class LiberacionRepository : ILiberacionRepository
 
     /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> IngresarCorteAsync(
-        int loteId, string wkname, string fechacorte, string username,
+        int loteId, string wkname, int semana, int anio, string username,
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync(
-            _sp.CorteIngresar,
-            new { lote_id = loteId, wkname, fechacorte, username },
+            _sp.CorteIngresar,                              // ← _sp.CorteIngresar
+            new { lote_id = loteId, wkname, semana, anio, username },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }

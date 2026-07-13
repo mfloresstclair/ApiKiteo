@@ -311,7 +311,7 @@ public interface ILiberacionRepository
     /// Ejecuta: Kit_vin_corte_ingresar
     /// </summary>
     Task<IEnumerable<dynamic>> IngresarCorteAsync(
-        int loteId, string wkname, string fechacorte, string username,
+        int loteId, string wkname, int semana, int anio, string username,
         CancellationToken ct = default);
 
     /// <summary>

@@ -206,19 +206,26 @@ public sealed class LiberacionService : ILiberacionService
     // ── POST /api/liberacion/corte/ingresar ───────────────────────────────────
 
     public async Task<ServiceResult<CorteIngresarResponse>> IngresarCorteAsync(
-        CorteIngresarRequest request, CancellationToken ct = default)
+            CorteIngresarRequest request, CancellationToken ct = default)
     {
         try
         {
             _logger.LogInformation(
-                "Corte ingresar | lote={L} wkname={W} fecha={F} usuario={U}",
-                request.LoteId, request.Wkname, request.Fechacorte, request.Username);
+                "Corte ingresar | lote={L} wkname={W} semana={S} anio={A} usuario={U}",
+                request.LoteId, request.Wkname,
+                request.Semana, request.Anio, request.Username);
 
+            // El SP Kit_vin_liberacion_ingresar_corte recibe @semana + @anio
+            // y consulta SytelineOut (Blank4='312026') internamente
             var rows = await _repo.IngresarCorteAsync(
                 request.LoteId, request.Wkname,
-                request.Fechacorte, request.Username, ct);
+                request.Semana, request.Anio,
+                request.Username, ct);
 
-            var primera = rows.Select(r => (IDictionary<string, object?>)r).FirstOrDefault();
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
             if (primera is null)
                 return ServiceResult<CorteIngresarResponse>.Fail(
                     500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
@@ -229,24 +236,20 @@ public sealed class LiberacionService : ILiberacionService
             if (httpStatus != 200)
                 return ServiceResult<CorteIngresarResponse>.Fail(httpStatus, mensaje, "CORTE_ERR");
 
-            var pendientes = Convert.ToInt32(primera.GetValueOrDefault("semanas_pendientes") ?? 0);
-
-            _logger.LogInformation(
-                "Corte ingresar OK | lote={L} wkname={W} pendientes={P}",
-                request.LoteId, request.Wkname, pendientes);
+            var pendientes = Convert.ToInt32(primera.GetValueOrDefault("semanas_pendientes") ?? -1);
+            var fechaDerivada = primera.GetStr("fechacorte"); // el SP la devuelve si quieres
 
             return ServiceResult<CorteIngresarResponse>.Ok(
                 new CorteIngresarResponse(
                     Ok: true,
                     Mensaje: mensaje,
-                    LoteId: request.LoteId,
-                    Wkname: request.Wkname,
-                    Fechacorte: request.Fechacorte,
-                    SemanasPendientes: pendientes));
+                    SemanasPendientes: pendientes,
+                    Fechacorte: fechaDerivada));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error CorteIngresar lote={L}", request.LoteId);
+            _logger.LogError(ex,
+                "Error IngresarCorte lote={L} wkname={W}", request.LoteId, request.Wkname);
             return ServiceResult<CorteIngresarResponse>.Fail(
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }

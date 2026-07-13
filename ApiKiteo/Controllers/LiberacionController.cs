@@ -136,9 +136,14 @@ public sealed class LiberacionController : KiteoBaseController
             return BadRequest(ErrorResponse.Create(
                 "El campo 'wkname' es requerido.", ErrorCodes.Kiteo400));
 
-        if (string.IsNullOrWhiteSpace(request.Fechacorte))
+        if (request.Semana < 1 || request.Semana > 53)
             return BadRequest(ErrorResponse.Create(
-                "El campo 'fechacorte' es requerido.", ErrorCodes.Kiteo400));
+                "El campo 'semana' debe estar entre 1 y 53.", ErrorCodes.Kiteo400));
+
+        if (request.Anio < 2020 || request.Anio > DateTime.Today.Year + 1)
+            return BadRequest(ErrorResponse.Create(
+                $"El campo 'anio' debe estar entre 2020 y {DateTime.Today.Year + 1}.",
+                ErrorCodes.Kiteo400));
 
         if (string.IsNullOrWhiteSpace(request.Username))
             return BadRequest(ErrorResponse.Create(

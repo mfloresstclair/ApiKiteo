@@ -174,7 +174,8 @@ public sealed record LiberacionRequest(
 public sealed record CorteIngresarRequest(
     [Required] int LoteId,
     [Required] string Wkname,
-    [Required] string Fechacorte,   // ej: "262026"
+    [Required] int Semana,    // 1-53 — el WinForms lo pre-llena del wkname
+    [Required] int Anio,      // ej. 2026
     [Required] string Username
 );
 /// <summary>

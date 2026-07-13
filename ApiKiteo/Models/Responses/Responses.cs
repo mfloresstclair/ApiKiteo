@@ -618,10 +618,8 @@ public sealed record LiberacionGetResponse(
 public sealed record CorteIngresarResponse(
     bool Ok,
     string Mensaje,
-    int LoteId,
-    string Wkname,
-    string Fechacorte,
-    int SemanasPendientes   // cuántas faltan de ingresar en el lote
+    int SemanasPendientes,
+    string? Fechacorte   // fecha derivada por el SP — el WinForms la muestra en la columna
 );
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
