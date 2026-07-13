@@ -116,20 +116,21 @@ public sealed class LiberacionRepository : ILiberacionRepository
         // Inline SQL — BuildPlan.dbo.SytelineOut está en el mismo SQL Server.
         // Blank4 formato: [semana sin cero][año 4 dígitos]
         // "272026" = semana 27 año 2026 | "82026" = semana 8 año 2026
-        const string sql = @"
-            SELECT CAST(MAX(DateFetch) AS date)
-            FROM BuildPlan.dbo.SytelineOut
-            WHERE LEN(LTRIM(RTRIM(Blank4))) BETWEEN 5 AND 6
-              AND RIGHT(LTRIM(RTRIM(Blank4)), 4) = @anio
-              AND TRY_CONVERT(int,
-                    LEFT(LTRIM(RTRIM(Blank4)),
-                         LEN(LTRIM(RTRIM(Blank4))) - 4)
-                  ) = @semana";
+        // Fecha DOMINANTE (día con más registros = corte real), no MAX:
+        // un ajuste tardío de pocos registros no debe mover la fechacorte.
+        const string sql = @"SELECT TOP 1 CAST(DateFetch AS DATE)
+FROM BuildPlan.dbo.SytelineOut
+WHERE LTRIM(RTRIM(Blank4)) = @blank4
+GROUP BY CAST(DateFetch AS DATE)
+ORDER BY COUNT(*) DESC;";
+
+        // Blank4 = semana SIN cero a la izquierda + año 4 dígitos
+        var blank4 = semana.ToString() + anio.ToString();   // 31 + 2026 = "312026", 8 + 2026 = "82026"
 
         using var conn = _db.CreateConnection();
         var result = await conn.QueryFirstOrDefaultAsync<DateTime?>(
             sql,
-            new { semana, anio = anio.ToString() },
+            new { blank4 },                                  // ← ahora sí pasa @blank4
             commandTimeout: 15);
 
         if (result is null) return null;
