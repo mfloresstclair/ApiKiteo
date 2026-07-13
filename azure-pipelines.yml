@@ -78,70 +78,70 @@ stages:
 # ============================================================
 #  2) DEPLOY BACKUP (local en itdev-pc)
 # ============================================================
-# - stage: DeployBackup
-#   displayName: 'Deploy to Backup (itdev-pc)'
-#   dependsOn: Build
-#   condition: succeeded()
-#   jobs:
-#   - job: deployBackup
-#     pool:
-#       name: Default
-#       demands: agent.name -equals itdev-pc-azdo
-#     steps:
-#       # --- Descarga explícita del artefacto (compatible con DevOps Server) ---
-#       - task: DownloadBuildArtifacts@0
-#         displayName: 'Download artifact drop'
-#         inputs:
-#           buildType: 'current'
-#           downloadType: 'single'
-#           artifactName: 'drop'
-#           downloadPath: '$(System.ArtifactsDirectory)'
+- stage: DeployBackup
+  displayName: 'Deploy to Backup (itdev-pc)'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: deployBackup
+    pool:
+      name: Default
+      demands: agent.name -equals itdev-pc-azdo
+    steps:
+      # --- Descarga explícita del artefacto (compatible con DevOps Server) ---
+      - task: DownloadBuildArtifacts@0
+        displayName: 'Download artifact drop'
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'drop'
+          downloadPath: '$(System.ArtifactsDirectory)'
 
-#       - task: PowerShell@2
-#         displayName: 'Deploy + validar BACKUP'
-#         inputs:
-#           targetType: 'inline'
-#           script: |
-#             $ErrorActionPreference = "Stop"
-#             $target = "$(backupTargetDir)"
-#             $downloadRoot = "$(System.ArtifactsDirectory)\drop"
+      - task: PowerShell@2
+        displayName: 'Deploy + validar BACKUP'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $ErrorActionPreference = "Stop"
+            $target = "$(backupTargetDir)"
+            $downloadRoot = "$(System.ArtifactsDirectory)\drop"
 
-#             # --- Localizar la carpeta REAL que contiene el .exe (maneja anidamiento) ---
-#             $exe = Get-ChildItem "$downloadRoot" -Recurse -Filter "ApiKiteo.API.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-#             if (-not $exe) {
-#                 throw "No se encontró ApiKiteo.API.exe en el artefacto. Abortando (backup intacto)."
-#             }
-#             $source = $exe.Directory.FullName          # ← la carpeta que realmente tiene el exe
-#             Write-Host "Fuente detectada: $source"
+            # --- Localizar la carpeta REAL que contiene el .exe (maneja anidamiento) ---
+            $exe = Get-ChildItem "$downloadRoot" -Recurse -Filter "ApiKiteo.API.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $exe) {
+                throw "No se encontró ApiKiteo.API.exe en el artefacto. Abortando (backup intacto)."
+            }
+            $source = $exe.Directory.FullName          # ← la carpeta que realmente tiene el exe
+            Write-Host "Fuente detectada: $source"
 
-#             Write-Host "==> Deteniendo servicio $(backupServiceName)..."
-#             Stop-Service "$(backupServiceName)" -Force
-#             Start-Sleep -Seconds 3
+            Write-Host "==> Deteniendo servicio $(backupServiceName)..."
+            Stop-Service "$(backupServiceName)" -Force
+            Start-Sleep -Seconds 3
 
-#             # Respaldo (rollback)
-#             $bak = "${target}_old"
-#             if (Test-Path $bak) { Remove-Item $bak -Recurse -Force }
-#             Copy-Item $target $bak -Recurse -Force
-#             Write-Host "Respaldo creado en $bak"
+            # Respaldo (rollback)
+            $bak = "${target}_old"
+            if (Test-Path $bak) { Remove-Item $bak -Recurse -Force }
+            Copy-Item $target $bak -Recurse -Force
+            Write-Host "Respaldo creado en $bak"
 
-#             # Limpiar y copiar desde la carpeta correcta (contenido, sin anidar)
-#             Write-Host "==> Copiando nueva versión..."
-#             Get-ChildItem $target -Recurse | Remove-Item -Recurse -Force
-#             Copy-Item "$source\*" $target -Recurse -Force
+            # Limpiar y copiar desde la carpeta correcta (contenido, sin anidar)
+            Write-Host "==> Copiando nueva versión..."
+            Get-ChildItem $target -Recurse | Remove-Item -Recurse -Force
+            Copy-Item "$source\*" $target -Recurse -Force
 
-#             # Verificar que el exe quedó en el nivel correcto
-#             if (!(Test-Path "$target\ApiKiteo.API.exe")) {
-#                 throw "El exe no quedó en $target. Revisar estructura del artefacto."
-#             }
+            # Verificar que el exe quedó en el nivel correcto
+            if (!(Test-Path "$target\ApiKiteo.API.exe")) {
+                throw "El exe no quedó en $target. Revisar estructura del artefacto."
+            }
 
-#             Write-Host "==> Iniciando servicio..."
-#             Start-Service "$(backupServiceName)"
-#             Start-Sleep -Seconds 12
+            Write-Host "==> Iniciando servicio..."
+            Start-Service "$(backupServiceName)"
+            Start-Sleep -Seconds 12
 
-#             Write-Host "==> Health check backup (puerto $(backupPort))..."
-#             $h = Invoke-WebRequest -Uri "http://localhost:$(backupPort)$(healthPath)" -UseBasicParsing -TimeoutSec 30
-#             if ($h.StatusCode -ne 200) { throw "Health backup falló: $($h.StatusCode)" }
-#             Write-Host "BACKUP VALIDADO OK"
+            Write-Host "==> Health check backup (puerto $(backupPort))..."
+            $h = Invoke-WebRequest -Uri "http://localhost:$(backupPort)$(healthPath)" -UseBasicParsing -TimeoutSec 30
+            if ($h.StatusCode -ne 200) { throw "Health backup falló: $($h.StatusCode)" }
+            Write-Host "BACKUP VALIDADO OK"
 
 
 # ============================================================
