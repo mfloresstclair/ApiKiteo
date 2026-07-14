@@ -209,4 +209,11 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "OK", timestamp = DateTime.UtcNow }))
    .ExcludeFromDescription();
 
+app.MapGet("/diag/config", (IConfiguration cfg) => Results.Ok(new
+{
+    envThragg = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("Thragg")),
+    envDvT = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DvT")),
+    kiteoDbFallback = !string.IsNullOrWhiteSpace(cfg.GetConnectionString("KiteoDB")),
+    dbOverride = cfg["DatabaseOverride"] ?? "(vacío)"
+})).ExcludeFromDescription();
 app.Run();
