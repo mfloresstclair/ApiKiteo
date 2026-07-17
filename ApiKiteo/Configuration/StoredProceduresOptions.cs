@@ -73,4 +73,12 @@ public sealed class StoredProceduresOptions
     public string ListaQuitarItem { get; init; } = string.Empty;  // Kit_lista_quitar_item
     public string ListaEliminar { get; init; } = string.Empty;  // Kit_lista_eliminar
 
+    // ── Expeditados ───────────────────────────────────────────────────────────
+    public string ExpeditadosDetectar { get; init; } = string.Empty;
+    public string ExpeditadosMover { get; init; } = string.Empty;
+    public string ExpeditadosIgnorar { get; init; } = string.Empty;
+
+    // ── Comunización ──────────────────────────────────────────────────────────
+    public string ValidarComunizacion { get; init; } = string.Empty;
+
 }

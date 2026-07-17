@@ -240,3 +240,19 @@ public interface IListasService
     Task<ServiceResult<ListaOkResponse>> EliminarAsync(
         int listaId, string username, CancellationToken ct = default);
 }
+
+
+public interface IExpeditadosService
+{
+    Task<ServiceResult<ExpeditadosListResponse>> DetectarAsync(
+        bool soloReportar, CancellationToken ct = default);
+
+    Task<ServiceResult<ExpeditadosMoverResponse>> MoverAsync(
+        ExpeditadosMoverRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<ExpeditadosIgnorarResponse>> IgnorarAsync(
+        ExpeditadosIgnorarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<ComunizacionValidarResponse>> ValidarComunizacionAsync(
+        int semana, int anio, DateOnly fechacorte, CancellationToken ct = default);
+}

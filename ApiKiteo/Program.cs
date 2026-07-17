@@ -49,6 +49,7 @@ builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 // Transient: el provider LDAP no tiene estado
 builder.Services.AddTransient<ILdapAuthProvider, LdapAuthProvider>();
 
+
 // ─── Repositories ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<ISemanasRepository, SemanasRepository>();
@@ -64,6 +65,7 @@ builder.Services.AddScoped<ILiberacionRepository, LiberacionRepository>();
 builder.Services.AddScoped<ISchedulingRepository, SchedulingRepository>();
 builder.Services.AddScoped<IDescaneoRepository, DescaneoRepository>();
 builder.Services.AddScoped<IListasRepository, ListasRepository>();
+builder.Services.AddScoped<IExpeditadosRepository, ExpeditadosRepository>();
 // ─── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISemanasService, SemanasService>();
@@ -80,6 +82,7 @@ builder.Services.AddScoped<ILiberacionService, LiberacionService>();
 builder.Services.AddScoped<ISchedulingService, SchedulingService>();
 builder.Services.AddScoped<IDescaneoService, DescaneoService>();
 builder.Services.AddScoped<IListasService, ListasService>();
+builder.Services.AddScoped<IExpeditadosService, ExpeditadosService>();
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()

@@ -239,3 +239,16 @@ public sealed record ListaNotaRequest(
 public sealed record ListaEliminarRequest(
     [Required] string Username
 );
+
+/// <summary>POST /api/expeditados/mover — crea semana EXP con los VINs seleccionados.</summary>
+public sealed record ExpeditadosMoverRequest(
+    [Required] IReadOnlyList<int> Ids,      // ids de Kit_vin_expeditados
+    [Required] string Username
+);
+
+/// <summary>POST /api/expeditados/ignorar — descarta sin mover.</summary>
+public sealed record ExpeditadosIgnorarRequest(
+    [Required] IReadOnlyList<int> Ids,
+    [Required] string Username,
+    string? Motivo = null
+);

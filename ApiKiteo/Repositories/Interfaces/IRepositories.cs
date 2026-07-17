@@ -402,3 +402,22 @@ public interface IListasRepository
     Task<bool> HasLpAccessAsync(
         string username, CancellationToken ct = default);
 }
+
+public interface IExpeditadosRepository
+{
+    /// <summary>Ejecuta Kit_vin_expeditados_detectar. RS1=resumen, RS2=pendientes.</summary>
+    Task<(IEnumerable<dynamic> Resumen, IEnumerable<dynamic> Pendientes)>
+        DetectarAsync(bool soloReportar, CancellationToken ct = default);
+
+    /// <summary>Ejecuta Kit_vin_expeditados_mover. RS1=resultado, RS2=vins movidos.</summary>
+    Task<(IEnumerable<dynamic> Resultado, IEnumerable<dynamic> Vins)>
+        MoverAsync(string ids, string username, CancellationToken ct = default);
+
+    /// <summary>Ejecuta Kit_vin_expeditados_ignorar.</summary>
+    Task<IEnumerable<dynamic>> IgnorarAsync(
+        string ids, string username, string? motivo, CancellationToken ct = default);
+
+    /// <summary>Ejecuta kit_vin_validar_comunizacion.</summary>
+    Task<IEnumerable<dynamic>> ValidarComunizacionAsync(
+        string semana, DateOnly fechacorte, CancellationToken ct = default);
+}

@@ -795,3 +795,54 @@ public sealed record FechaCorteDerivadaResponse(
     string? Fechacorte,  // null si el corte aún no ocurrió
     string Mensaje
 );
+
+/// <summary>Un VIN expeditado detectado.</summary>
+public sealed record ExpeditadoItem
+{
+    public int Id { get; init; }
+    public string Vin { get; init; } = string.Empty;
+    public string WknameOrigen { get; init; } = string.Empty;
+    public string? Tipo { get; init; }
+    public string? DueDate { get; init; }
+    public string? DetectadoEn { get; init; }
+    public string Resolucion { get; init; } = string.Empty;
+}
+
+/// <summary>GET /api/expeditados</summary>
+public sealed record ExpeditadosListResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<ExpeditadoItem> Resultados
+);
+
+/// <summary>POST /api/expeditados/mover</summary>
+public sealed record ExpeditadosMoverResponse(
+    bool Ok,
+    string Mensaje,
+    string? WknameDestino,          // wk29_3_Body_EXP1
+    IReadOnlyList<string> Vins
+);
+
+/// <summary>POST /api/expeditados/ignorar</summary>
+public sealed record ExpeditadosIgnorarResponse(
+    bool Ok,
+    string Mensaje,
+    int Afectados
+);
+
+/// <summary>Un harness que la semana pide pero no está comunizado.</summary>
+public sealed record ComunizacionGapItem
+{
+    public string Harness { get; init; } = string.Empty;
+    public int CircuitosCorte { get; init; }
+    public int VinsAfectados { get; init; }
+    public string? ComunizadoDespues { get; init; }  // fecha > fechacorte, o null
+}
+
+/// <summary>GET /api/comunizacion/validar</summary>
+public sealed record ComunizacionValidarResponse(
+    bool Ok,
+    int Total,
+    string Mensaje,
+    IReadOnlyList<ComunizacionGapItem> Gaps
+);
