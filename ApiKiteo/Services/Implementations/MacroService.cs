@@ -15,7 +15,7 @@ public sealed class MacroService : IMacroService
     [
         "WkName", "Vin", "VinDesc", "Overlay", "Grupo",
         "Item", "ItemDescripcion", "Locacion", "Tipo", "Cliente",
-        "Operador", "Recorddate", "Entregado", "EntregadoPor"
+        "Operador", "Recorddate", "Entregado", "EntregadoPor", "Motherharness"
     ];
 
     public MacroService(IMacroRepository repo, ILogger<MacroService> logger)
@@ -67,7 +67,8 @@ public sealed class MacroService : IMacroService
                         EscapeCsv(d.GetValueOrDefault("Operador")),
                         EscapeCsvDate(d.GetValueOrDefault("recorddate")),
                         EscapeCsvDate(d.GetValueOrDefault("Entregado")),
-                        EscapeCsv(d.GetValueOrDefault("EntregadoPor"))
+                        EscapeCsv(d.GetValueOrDefault("EntregadoPor")),
+                        EscapeCsv(d.GetValueOrDefault("Motherharness"))
                     ]);
 
                     await writer.WriteLineAsync(linea);

@@ -31,7 +31,6 @@ public sealed class MacroRepository : IMacroRepository
         WkName,
         Vin,
         vinDesc,
-        motherharness           AS Motherharness,
         overlay,
         Grupo,
         item,
@@ -42,7 +41,8 @@ public sealed class MacroRepository : IMacroRepository
         Operador,
         recorddate,
         Entregado,
-        Entregado_por           AS EntregadoPor
+        Entregado_por           AS EntregadoPor,
+        motherharness           AS Motherharness
     FROM dbo.VinBusiness_DB_macro WITH (NOLOCK)
     WHERE ISNULL(Estatus, 1) = 1
     """);
