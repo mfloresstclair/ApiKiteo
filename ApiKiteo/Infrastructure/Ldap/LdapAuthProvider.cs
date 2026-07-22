@@ -1,15 +1,20 @@
-using System.DirectoryServices.AccountManagement;
+using Novell.Directory.Ldap;
 using Microsoft.Extensions.Options;
 using ApiKiteo.API.Configuration;
 
 namespace ApiKiteo.API.Infrastructure.Ldap;
 
 /// <summary>
-/// Autenticación contra Active Directory usando PrincipalContext
-/// (System.DirectoryServices.AccountManagement — API nativa de Windows).
+/// Autenticación LDAP cross-platform usando Novell.Directory.Ldap.NETStandard.
+/// Reemplaza PrincipalContext (Windows-only) — funciona en Linux con SSSD/AD.
 ///
-/// Estrategia: dominio null → Windows auto-detecta el DC de la máquina.
-/// Fallback: nombre de dominio configurado en LdapOptions.
+/// Dominio: STCLAIR.STCLAIRTECH.COM
+/// SSSD ya tiene línea de visión al DC — Novell usa el mismo host.
+///
+/// Orden de intentos:
+///   1. UPN:     mflores@stclair.stclairtech.com  (formato moderno, más confiable)
+///   2. NetBIOS: STCLAIR\mflores                  (formato legacy Windows)
+///   3. Bare:    mflores                           (fallback)
 /// </summary>
 public sealed class LdapAuthProvider : ILdapAuthProvider
 {
@@ -24,78 +29,75 @@ public sealed class LdapAuthProvider : ILdapAuthProvider
         _logger = logger;
     }
 
-    /// <inheritdoc/>
     public async Task<(bool Success, string Message)> AuthenticateAsync(
-        string username,
-        string password,
-        CancellationToken ct = default)
+        string username, string password, CancellationToken ct = default)
     {
-        return await Task.Run(() =>
+        // UPN primero — no depende del NetBIOS name, funciona siempre con AD moderno
+        var bindCandidates = new List<string>
         {
-            // Intento 1: null → Windows auto-detecta el Domain Controller
-            // Es el método más confiable en servidores unidos al dominio
-            if (TryValidate(null, username, password, out var err1))
+            $"{username}@{_options.DomainFqdn}",      // mflores@stclair.stclairtech.com
+            $"{_options.Domain}\\{username}",          // STCLAIR\mflores
+            username                                   // bare fallback
+        };
+
+        foreach (var bindDn in bindCandidates
+            .Where(b => !string.IsNullOrWhiteSpace(b))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var (ok, errMsg) = await TryBindAsync(bindDn, password, ct);
+
+            if (ok)
             {
-                _logger.LogInformation("AD auth exitoso para {User} (auto-detect DC)", username);
+                _logger.LogInformation(
+                    "LDAP auth exitoso | user={U} bind={B} host={H}:{P}",
+                    username, bindDn, _options.Host, _options.Port);
                 return (true, "OK");
             }
 
-            _logger.LogDebug("Auto-detect DC falló para {User}: {Err} — intentando con dominio configurado", username, err1);
+            _logger.LogDebug(
+                "LDAP bind falló | bind={B} error={E}", bindDn, errMsg);
+        }
 
-            // Intento 2: dominio explícito desde appsettings (STCLAIRTECH)
-            if (!string.IsNullOrWhiteSpace(_options.Domain))
-            {
-                if (TryValidate(_options.Domain, username, password, out var err2))
-                {
-                    _logger.LogInformation("AD auth exitoso para {User} (dominio={Dom})", username, _options.Domain);
-                    return (true, "OK");
-                }
-
-                _logger.LogDebug("Dominio configurado falló para {User}: {Err}", username, err2);
-            }
-
-            // Intento 3: dominio de la máquina actual (Environment.UserDomainName)
-            var machineDomain = Environment.UserDomainName;
-            if (!string.IsNullOrWhiteSpace(machineDomain)
-                && machineDomain != _options.Domain
-                && machineDomain != "WORKGROUP")
-            {
-                if (TryValidate(machineDomain, username, password, out var err3))
-                {
-                    _logger.LogInformation("AD auth exitoso para {User} (UserDomainName={Dom})", username, machineDomain);
-                    return (true, "OK");
-                }
-
-                _logger.LogWarning("Todos los intentos AD fallaron para {User}. Último error: {Err}", username, err3);
-            }
-
-            return (false, "Credenciales invalidas o no autorizado.");
-
-        }, ct);
+        _logger.LogWarning(
+            "LDAP auth fallido para {User} — todos los intentos de bind fallaron", username);
+        return (false, "Credenciales inválidas o no autorizado.");
     }
 
-    // ── Helper: intenta ValidateCredentials y captura cualquier excepción ─────
-    private bool TryValidate(string? domain, string username, string password, out string errorMsg)
+    private async Task<(bool Ok, string Error)> TryBindAsync(
+        string bindDn, string password, CancellationToken ct)
     {
         try
         {
-            _logger.LogDebug("PrincipalContext dominio={Dom} usuario={User}", domain ?? "(null)", username);
+            using var conn = new LdapConnection { SecureSocketLayer = _options.UseSsl };
 
-            using var pc = new PrincipalContext(ContextType.Domain, domain);
-            var result = pc.ValidateCredentials(username, password);
+            // Novell es síncrono — correr en thread pool para no bloquear ASP.NET
+            await Task.Run(() =>
+            {
+                conn.Connect(_options.Host, _options.Port);
+                conn.Bind(bindDn, password);   // lanza LdapException si falla
+            }, ct);
 
-            errorMsg = result ? string.Empty : "Credenciales incorrectas";
-            return result;
+            return (true, string.Empty);
         }
-        catch (PrincipalServerDownException ex)
+        catch (LdapException ex) when (ex.ResultCode == LdapException.InvalidCredentials)
         {
-            errorMsg = $"ServerDown: {ex.Message}";
-            return false;
+            return (false, "InvalidCredentials");
+        }
+        catch (LdapException ex) when (ex.ResultCode == LdapException.NoSuchObject)
+        {
+            return (false, "UserNotFound");
+        }
+        catch (LdapException ex)
+        {
+            _logger.LogWarning(
+                "LdapException | code={Code} msg={Msg} bind={Dn}",
+                ex.ResultCode, ex.Message, bindDn);
+            return (false, $"LDAP {ex.ResultCode}: {ex.Message}");
         }
         catch (Exception ex)
         {
-            errorMsg = ex.Message;
-            return false;
+            _logger.LogError(ex, "Error inesperado en bind para {Dn}", bindDn);
+            return (false, ex.Message);
         }
     }
 }
