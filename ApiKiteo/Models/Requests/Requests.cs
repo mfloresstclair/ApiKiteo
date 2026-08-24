@@ -209,31 +209,80 @@ public sealed record DescaneoAplicarRequest(
     [Required] string Motivo
 );
 
+// ─── Listas de prioridad ──────────────────────────────────────────────────
+// Nivel 1: kit_lista_prioridad · Nivel 2: kit_lista · Nivel 3: kit_lista_item
+
+// Los [StringLength] no son decorado: SQL Server TRUNCA un parametro
+// demasiado largo SIN error. Una nota de 700 caracteres se guardaba a 500
+// y la API devolvia 200. Peor con VARCHAR(20): un usuario de dominio largo
+// quedaba truncado en asignado_a y ya no cruzaba contra Central_Access.
+
+/// <summary>Un circuito. `Grupo` es lo que permite pintar la tarjeta del panel F6.</summary>
 public sealed record ListaItemInput(
-    [Required] string Item,
-    string? Locacion
+    [Required][StringLength(100)] string Item,
+    [StringLength(50)]  string? Locacion,
+    [StringLength(50)]  string? Grupo = null,
+    [StringLength(100)] string? Etiqueta = null
 );
 
-public sealed record ListaGuardarRequest(
-    [Required] string Wkname,
-    [Required] string Cliente,
-    [Required] string Tipo,
-    string? GruposJson,
-    string? Det,
-    string? FiltroLoc,
-    string? TextoBusqueda,
-    [Required] string CreadoPor,
-    [Required] List<ListaItemInput> Items
+/// <summary>POST /listas/prioridades — crea el contenedor de la semana.</summary>
+public sealed record ListaPrioridadCrearRequest(
+    [Required][StringLength(50)]  string Wkname,
+    [Required][StringLength(10)]  string Cliente,
+    [Required][StringLength(50)]  string Tipo,
+    [Required][StringLength(100)] string Nombre,
+    [Required][StringLength(20)]  string CreadoPor
 );
 
+/// <summary>POST /listas — crea una lista de prioridad dentro del contenedor.</summary>
+public sealed record ListaCrearRequest(
+    [Required] int PrioridadId,
+    [Required][StringLength(100)] string Nombre,
+    // '#RRGGBB'. El SP lo valida con un CHECK; aqui se valida antes de viajar.
+    [Required]
+    [RegularExpression("^#[0-9A-Fa-f]{6}$", ErrorMessage = "El color debe ser #RRGGBB.")]
+    string ColorHex,
+    [Required][StringLength(20)] string CreadoPor,
+    // Como se armo: grupos, det, filtroLoc, texto, chips. Se guarda tal cual.
+    string? FiltrosJson = null,
+    [StringLength(20)] string? AsignadoA = null,
+    // 1 = mas prioridad. null = al final. 0 empujaba TODAS las listas y
+    // dejaba una "Prioridad 0" con un hueco que ya no se podia cerrar.
+    [Range(1, int.MaxValue, ErrorMessage = "El orden empieza en 1. Omítelo para ir al final.")]
+    int? Orden = null,
+    List<ListaItemInput>? Items = null
+);
+
+/// <summary>PATCH /listas/{id} — cualquier campo en null se deja como está.</summary>
+public sealed record ListaActualizarRequest(
+    [Required][StringLength(20)] string Username,
+    [StringLength(100)] string? Nombre = null,
+    [RegularExpression("^#[0-9A-Fa-f]{6}$", ErrorMessage = "El color debe ser #RRGGBB.")]
+    string? ColorHex = null,
+    // Cadena vacia borra el asignado; null lo deja igual.
+    [StringLength(20)] string? AsignadoA = null
+);
+
+/// <summary>POST /listas/{id}/reordenar — -1 sube (más prioridad), 1 baja.</summary>
+public sealed record ListaReordenarRequest(
+    [Required] short Direccion,
+    [Required][StringLength(20)] string Username
+);
+
+/// <summary>
+/// POST /listas/{id}/items. `Etiqueta` es solo el DEFAULT para los items que
+/// no traen la suya — cada ListaItemInput puede llevar la propia.
+/// </summary>
 public sealed record ListaAgregarRequest(
     [Required] List<ListaItemInput> Items,
-    string? Etiqueta = null,
-    string? CreadoPor = null
+    [StringLength(100)] string? Etiqueta = null,
+    [StringLength(20)]  string? CreadoPor = null
 );
 
 public sealed record ListaNotaRequest(
-    string? NotaArea
+    [StringLength(500)] string? NotaArea,
+    // Quien la escribio. Va a Boss_transactions.
+    [StringLength(20)] string? Username = null
 );
 
 public sealed record ListaEliminarRequest(

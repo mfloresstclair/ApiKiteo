@@ -64,14 +64,20 @@ public sealed class StoredProceduresOptions
     public string DescanBuscar { get; init; } = string.Empty;  // Kit_vin_descan_buscar
     public string DescaneoAplicar { get; init; } = string.Empty;  // Kit_vin_descaneo_aplicar
 
-     //── Lista Viva ────────────────────────────────────────────────────────────────
-     public string ListasActivas { get; init; } = string.Empty;  // Kit_listas_activas
-    public string ListaGuardar { get; init; } = string.Empty;  // Kit_lista_guardar
-    public string ListaDetalle { get; init; } = string.Empty;  // Kit_lista_detalle
-    public string ListaAgregar { get; init; } = string.Empty;  // Kit_lista_agregar
-    public string ListaNota { get; init; } = string.Empty;  // Kit_lista_nota
-    public string ListaQuitarItem { get; init; } = string.Empty;  // Kit_lista_quitar_item
-    public string ListaEliminar { get; init; } = string.Empty;  // Kit_lista_eliminar
+    //── Listas de prioridad — modelo de 3 niveles ─────────────────────────────
+    // Nivel 1: el contenedor. Nivel 2: la lista con color y orden. Nivel 3: items.
+    public string ListaPrioridadCrear  { get; init; } = string.Empty;  // Kit_lista_prioridad_crear
+    public string ListaPrioridadList   { get; init; } = string.Empty;  // Kit_lista_prioridad_list
+    public string ListasActivas        { get; init; } = string.Empty;  // Kit_listas_activas
+    public string ListaCrear           { get; init; } = string.Empty;  // Kit_lista_crear
+    public string ListaActualizar      { get; init; } = string.Empty;  // Kit_lista_actualizar
+    public string ListaReordenar       { get; init; } = string.Empty;  // Kit_lista_reordenar
+    public string ListaDetalle         { get; init; } = string.Empty;  // Kit_lista_detalle
+    public string ListaAgregar         { get; init; } = string.Empty;  // Kit_lista_agregar
+    public string ListaNota            { get; init; } = string.Empty;  // Kit_lista_nota
+    public string ListaQuitarItem      { get; init; } = string.Empty;  // Kit_lista_quitar_item
+    public string ListaEliminar        { get; init; } = string.Empty;  // Kit_lista_eliminar
+    public string ListaGruposMarcados  { get; init; } = string.Empty;  // Kit_lista_grupos_marcados
 
     // ── Expeditados ───────────────────────────────────────────────────────────
     public string ExpeditadosDetectar { get; init; } = string.Empty;

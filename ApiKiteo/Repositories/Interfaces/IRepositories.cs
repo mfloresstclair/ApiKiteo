@@ -367,33 +367,64 @@ public interface IDescaneoRepository
         int id, string username, string motivo,
         CancellationToken ct = default);
 }
+/// <summary>
+/// Listas de prioridad — modelo de 3 niveles.
+///   Nivel 1  kit_lista_prioridad · Nivel 2  kit_lista · Nivel 3  kit_lista_item
+/// </summary>
 public interface IListasRepository
 {
-    Task<IEnumerable<dynamic>> GetActivasAsync(
-        string? wkname, string? cliente, string? tipo,
+    // ── Nivel 1: contenedor ───────────────────────────────────────────────
+    Task<dynamic?> PrioridadCrearAsync(
+        string wkname, string cliente, string tipo, string nombre, string creadoPor,
         CancellationToken ct = default);
 
-    Task<dynamic?> GuardarAsync(
+    Task<IEnumerable<dynamic>> PrioridadListAsync(
         string wkname, string cliente, string tipo,
-        string? gruposJson, string? det, string? filtroLoc,
-        string? textoBusqueda, string creadoPor, string jsonItems,
         CancellationToken ct = default);
 
+    // ── Nivel 2: listas ───────────────────────────────────────────────────
+    Task<IEnumerable<dynamic>> GetActivasAsync(
+        int prioridadId, CancellationToken ct = default);
+
+    Task<dynamic?> CrearAsync(
+        int prioridadId, string nombre, string colorHex,
+        string? filtrosJson, string? asignadoA, string creadoPor,
+        string? jsonItems, int? orden,
+        CancellationToken ct = default);
+
+    /// <summary>asignadoA == "" borra el asignado; null lo deja como está.</summary>
+    Task<dynamic?> ActualizarAsync(
+        int listaId, string? nombre, string? colorHex, string? asignadoA, string username,
+        CancellationToken ct = default);
+
+    /// <summary>direccion: -1 sube (más prioridad), 1 baja.</summary>
+    Task<dynamic?> ReordenarAsync(
+        int listaId, short direccion, string username,
+        CancellationToken ct = default);
+
+    Task<dynamic?> EliminarAsync(
+        int listaId, string username, CancellationToken ct = default);
+
+    // ── Nivel 3: circuitos ────────────────────────────────────────────────
     Task<(dynamic? Header, IEnumerable<dynamic> Items)> GetDetalleAsync(
         int listaId, CancellationToken ct = default);
 
     Task<dynamic?> AgregarItemsAsync(
-        int listaId, string jsonItems, string? etiqueta, string? creadoPor, CancellationToken ct = default);
+        int listaId, string jsonItems, string? etiqueta, string? creadoPor,
+        CancellationToken ct = default);
 
+    // `username` va a Boss_transactions: vaciar una lista item por item no
+    // dejaba ningún rastro, a diferencia de borrarla completa.
     Task<dynamic?> ActualizarNotaAsync(
-        int listaId, int itemId, string? notaArea,
+        int listaId, int itemId, string? notaArea, string? username,
         CancellationToken ct = default);
 
     Task<dynamic?> QuitarItemAsync(
-        int listaId, int itemId, CancellationToken ct = default);
+        int listaId, int itemId, string? username, CancellationToken ct = default);
 
-    Task<dynamic?> EliminarAsync(
-        int listaId, string username, CancellationToken ct = default);
+    // ── Panel F6: franja de color por grupo ───────────────────────────────
+    Task<IEnumerable<dynamic>> GruposMarcadosAsync(
+        int prioridadId, CancellationToken ct = default);
 
     /// <summary>
     /// Inline SQL — valida LPaccess en Central_Access.

@@ -214,15 +214,36 @@ public interface IDescaneoService
     Task<ServiceResult<DescaneoAplicarResponse>> AplicarAsync(
         DescaneoAplicarRequest request, CancellationToken ct = default);
 }
+/// <summary>
+/// Listas de prioridad — modelo de 3 niveles.
+/// El `orden` de la lista ES la prioridad: 1 va primero.
+/// </summary>
 public interface IListasService
 {
+    // ── Nivel 1: contenedor ───────────────────────────────────────────────
+    Task<ServiceResult<ListaPrioridadListResponse>> GetPrioridadesAsync(
+        string wkname, string cliente, string tipo, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaPrioridadCrearResponse>> CrearPrioridadAsync(
+        ListaPrioridadCrearRequest request, CancellationToken ct = default);
+
+    // ── Nivel 2: listas ───────────────────────────────────────────────────
     Task<ServiceResult<ListasActivasResponse>> GetActivasAsync(
-        string? wkname, string? cliente, string? tipo,
-        CancellationToken ct = default);
+        int prioridadId, CancellationToken ct = default);
 
-    Task<ServiceResult<ListaGuardarResponse>> GuardarAsync(
-        ListaGuardarRequest request, CancellationToken ct = default);
+    Task<ServiceResult<ListaCrearResponse>> CrearAsync(
+        ListaCrearRequest request, CancellationToken ct = default);
 
+    Task<ServiceResult<ListaOkResponse>> ActualizarAsync(
+        int listaId, ListaActualizarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaReordenarResponse>> ReordenarAsync(
+        int listaId, ListaReordenarRequest request, CancellationToken ct = default);
+
+    Task<ServiceResult<ListaOkResponse>> EliminarAsync(
+        int listaId, string username, CancellationToken ct = default);
+
+    // ── Nivel 3: circuitos ────────────────────────────────────────────────
     Task<ServiceResult<ListaDetalleResponse>> GetDetalleAsync(
         int listaId, CancellationToken ct = default);
 
@@ -231,14 +252,15 @@ public interface IListasService
         CancellationToken ct = default);
 
     Task<ServiceResult<ListaOkResponse>> ActualizarNotaAsync(
-        int listaId, int itemId, string? notaArea,
+        int listaId, int itemId, string? notaArea, string? username,
         CancellationToken ct = default);
 
     Task<ServiceResult<ListaOkResponse>> QuitarItemAsync(
-        int listaId, int itemId, CancellationToken ct = default);
+        int listaId, int itemId, string? username, CancellationToken ct = default);
 
-    Task<ServiceResult<ListaOkResponse>> EliminarAsync(
-        int listaId, string username, CancellationToken ct = default);
+    // ── Panel F6 ──────────────────────────────────────────────────────────
+    Task<ServiceResult<GruposMarcadosResponse>> GetGruposMarcadosAsync(
+        int prioridadId, CancellationToken ct = default);
 }
 
 

@@ -732,20 +732,59 @@ public sealed record DescaneoAplicarResponse(
     string? OperadorRemovido,
     string? EscaneadoEn
 );
-public sealed record ListaActivaItem
+// ─── Listas de prioridad ──────────────────────────────────────────────────
+
+/// <summary>NIVEL 1 — el contenedor de la semana.</summary>
+public sealed record ListaPrioridadItem
 {
     public int Id { get; init; }
     public string Wkname { get; init; } = string.Empty;
     public string Cliente { get; init; } = string.Empty;
     public string Tipo { get; init; } = string.Empty;
-    public string? GruposJson { get; init; }
-    public string? Det { get; init; }
-    public string? FiltroLoc { get; init; }
-    public string? TextoBusqueda { get; init; }
+    public string Nombre { get; init; } = string.Empty;
     public string? CreadoPor { get; init; }
     public string? CreatedAt { get; init; }
-    public int PendienteActual { get; init; }
+    public int TotalListas { get; init; }
     public int TotalItems { get; init; }
+}
+
+public sealed record ListaPrioridadListResponse(
+    bool Ok,
+    IReadOnlyList<ListaPrioridadItem> Prioridades
+);
+
+public sealed record ListaPrioridadCrearResponse(bool Ok, int PrioridadId);
+
+/// <summary>NIVEL 2 — la lista con su color y su prioridad.</summary>
+public sealed record ListaActivaItem
+{
+    public int Id { get; init; }
+    public int PrioridadId { get; init; }
+    /// <summary>1 = va primero. Esta es la prioridad.</summary>
+    public int Orden { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    /// <summary>'#RRGGBB' — el color que eligió el operador.</summary>
+    public string ColorHex { get; init; } = string.Empty;
+    public string? FiltrosJson { get; init; }
+    public string? AsignadoA { get; init; }
+    public string? CreadoPor { get; init; }
+    public string? CreatedAt { get; init; }
+    /// <summary>CIRCUITOS en la lista.</summary>
+    public int TotalItems { get; init; }
+    /// <summary>Circuitos que esta lista comparte con una de mayor prioridad.</summary>
+    public int ItemsCedidos { get; init; }
+    /// <summary>
+    /// VINs pendientes que de verdad le tocan a esta lista (sin los cedidos).
+    /// OJO: son VINs, no circuitos. NO lo dividas entre TotalItems — esa es
+    /// exactamente la mezcla de unidades que producia el 245.6% en
+    /// Kit_vin_wk_grp_status. Para el porcentaje usa CircuitosPendientes.
+    /// </summary>
+    public int PendienteEfectivo { get; init; }
+    /// <summary>
+    /// CIRCUITOS con al menos 1 VIN pendiente. Esto es lo comparable contra
+    /// TotalItems: "faltan 8 de 10".
+    /// </summary>
+    public int CircuitosPendientes { get; init; }
 }
 
 public sealed record ListasActivasResponse(
@@ -753,40 +792,79 @@ public sealed record ListasActivasResponse(
     IReadOnlyList<ListaActivaItem> Listas
 );
 
-public sealed record ListaGuardarResponse(bool Ok, int Id);
-public sealed record ListaAgregarResponse(bool Ok, int Insertados, int Movidos = 0);
+public sealed record ListaCrearResponse(bool Ok, int ListaId, int Orden, int ItemsInsertados);
+
+/// <summary>
+/// JSON: { ok, insertados, movidos, yaEnPrioridadMayor }.
+/// `Movidos` NO mueve nada de otra lista: cuenta los circuitos que YA estaban
+/// en ESTA lista y cambiaron de etiqueta. El nombre es historico.
+/// `YaEnPrioridadMayor` si mira las otras listas del contenedor — es el aviso
+/// "12 de 47 ya estan en Prioridad 1".
+/// </summary>
+public sealed record ListaAgregarResponse(
+    bool Ok, int Insertados, int Movidos = 0, int YaEnPrioridadMayor = 0);
 public sealed record ListaOkResponse(bool Ok);
+public sealed record ListaReordenarResponse(bool Ok, int Orden);
 
 public sealed record ListaHeaderItem
 {
     public int Id { get; init; }
+    public int PrioridadId { get; init; }
+    public int Orden { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public string ColorHex { get; init; } = string.Empty;
+    public string? FiltrosJson { get; init; }
+    public string? AsignadoA { get; init; }
+    public string? CreadoPor { get; init; }
+    public string? CreatedAt { get; init; }
     public string Wkname { get; init; } = string.Empty;
     public string Cliente { get; init; } = string.Empty;
     public string Tipo { get; init; } = string.Empty;
-    public string? GruposJson { get; init; }
-    public string? Det { get; init; }
-    public string? FiltroLoc { get; init; }
-    public string? CreadoPor { get; init; }
-    public string? CreatedAt { get; init; }
+    public string? PrioridadNombre { get; init; }
 }
 
+/// <summary>NIVEL 3 — el circuito.</summary>
 public sealed record ListaDetalleItem
 {
     public int Id { get; init; }
     public string Item { get; init; } = string.Empty;
     public string? Locacion { get; init; }
-       public string? Etiqueta { get; init; }
-   public string? CreadoPor { get; init; }
+    /// <summary>De qué grupo salió — alimenta la franja del panel F6.</summary>
+    public string? Grupo { get; init; }
+    /// <summary>El label dentro de la lista.</summary>
+    public string? Etiqueta { get; init; }
+    public string? CreadoPor { get; init; }
     public string? CreatedAt { get; init; }
     public string? NotaArea { get; init; }
     public int PendienteActual { get; init; }
     public int TrabajadoActual { get; init; }
+    /// <summary>
+    /// null = el circuito es de esta lista. Con valor = pertenece a esa
+    /// prioridad mayor, y aquí sale solo como referencia.
+    /// </summary>
+    public int? CedidoAOrden { get; init; }
 }
 
 public sealed record ListaDetalleResponse(
     bool Ok,
     ListaHeaderItem Lista,
     IReadOnlyList<ListaDetalleItem> Items
+);
+
+/// <summary>Lo que pinta la franja de color del panel F6: una fila por (grupo, lista).</summary>
+public sealed record GrupoMarcadoItem
+{
+    public string Grupo { get; init; } = string.Empty;
+    public int ListaId { get; init; }
+    public int Orden { get; init; }
+    public string ListaNombre { get; init; } = string.Empty;
+    public string ColorHex { get; init; } = string.Empty;
+    public int Circuitos { get; init; }
+}
+
+public sealed record GruposMarcadosResponse(
+    bool Ok,
+    IReadOnlyList<GrupoMarcadoItem> Grupos
 );
 public sealed record FechaCorteDerivadaResponse(
     bool Ok,
