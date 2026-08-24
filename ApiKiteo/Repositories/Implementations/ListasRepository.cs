@@ -235,6 +235,19 @@ public sealed class ListasRepository : IListasRepository
             commandTimeout: TimeoutSp);
     }
 
+    // ── GET /listas/:id/piezas ────────────────────────────────────────────────
+
+    public async Task<IEnumerable<dynamic>> PiezasAsync(
+        int listaId, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.ListaPiezas,
+            new { lista_id = listaId },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: TimeoutSp);
+    }
+
     // ── Verificar LPaccess (inline — sin SP propio) ───────────────────────────
 
     public async Task<bool> HasLpAccessAsync(

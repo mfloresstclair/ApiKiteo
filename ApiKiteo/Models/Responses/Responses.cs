@@ -785,6 +785,12 @@ public sealed record ListaActivaItem
     /// TotalItems: "faltan 8 de 10".
     /// </summary>
     public int CircuitosPendientes { get; init; }
+    /// <summary>
+    /// PIEZAS (VINs DISTINTOS) que le faltan a esta lista. Tercera unidad, y
+    /// la unica que coincide con lo que cuenta la operadora en el piso.
+    /// 0 si la instancia todavia no tiene el SQL v2.
+    /// </summary>
+    public int PiezasPendientes { get; init; }
 }
 
 public sealed record ListasActivasResponse(
@@ -865,6 +871,36 @@ public sealed record GrupoMarcadoItem
 public sealed record GruposMarcadosResponse(
     bool Ok,
     IReadOnlyList<GrupoMarcadoItem> Grupos
+);
+
+/// <summary>
+/// Una PIEZA pendiente: un VIN con los circuitos que le faltan.
+///
+/// Es la unidad que cuenta la operadora ("me deberian salir 43") y la que la
+/// pantalla nunca mostraba: enseñaba CIRCUITOS y no decia de que unidad
+/// hablaba. Una lista de 53 circuitos puede ser 45 piezas.
+/// </summary>
+public sealed record ListaPiezaItem
+{
+    public string Vin { get; init; } = string.Empty;
+    public string? Grupo { get; init; }
+    /// <summary>Locacion real del VIN (el rack). int en VinBusiness_DB_macro.</summary>
+    public int? Locacion { get; init; }
+    public string? VinDesc { get; init; }
+    /// <summary>sequence_vin — el orden en que sale de produccion.</summary>
+    public string? Secuencia { get; init; }
+    /// <summary>Cuantos circuitos de ESTA lista le faltan a esta pieza.</summary>
+    public int CircuitosFaltan { get; init; }
+    /// <summary>De esos, cuantos le tocan a una lista de mayor prioridad.</summary>
+    public int CircuitosCedidos { get; init; }
+    /// <summary>Los circuitos, separados por coma. La UI los parte.</summary>
+    public string Circuitos { get; init; } = string.Empty;
+}
+
+public sealed record ListaPiezasResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<ListaPiezaItem> Piezas
 );
 public sealed record FechaCorteDerivadaResponse(
     bool Ok,

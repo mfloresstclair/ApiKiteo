@@ -427,6 +427,13 @@ public interface IListasRepository
         int prioridadId, CancellationToken ct = default);
 
     /// <summary>
+    /// Una fila por PIEZA (VIN) que la lista todavia tiene que surtir.
+    /// Es la otra unidad de la misma lista: `GetDetalleAsync` devuelve
+    /// CIRCUITOS, esto devuelve VINs. Mezclarlas fue el bug del "43 vs 53".
+    /// </summary>
+    Task<IEnumerable<dynamic>> PiezasAsync(int listaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Inline SQL — valida LPaccess en Central_Access.
     /// No tiene SP equivalente.
     /// </summary>

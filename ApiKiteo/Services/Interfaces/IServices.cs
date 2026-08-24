@@ -261,6 +261,13 @@ public interface IListasService
     // ── Panel F6 ──────────────────────────────────────────────────────────
     Task<ServiceResult<GruposMarcadosResponse>> GetGruposMarcadosAsync(
         int prioridadId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Las PIEZAS (VINs) que la lista todavia tiene que surtir, con los
+    /// circuitos que le faltan a cada una.
+    /// </summary>
+    Task<ServiceResult<ListaPiezasResponse>> GetPiezasAsync(
+        int listaId, CancellationToken ct = default);
 }
 
 

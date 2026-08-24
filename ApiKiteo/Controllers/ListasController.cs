@@ -232,6 +232,27 @@ public sealed class ListasController : KiteoBaseController
         return FromResult(await _service.EliminarAsync(id, request.Username.Trim(), ct));
     }
 
+    // ── GET /listas/:id/piezas ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Las PIEZAS (VINs) que esta lista todavia tiene que surtir, una por fila,
+    /// con los circuitos que le faltan a cada una.
+    ///
+    /// Es la MISMA lista que GET /listas/:id, contada en otra unidad. La
+    /// pantalla de circuitos dice "53"; esta dice "45". Las dos son correctas
+    /// y por eso las dos tienen que estar a la vista: mostrar una sola sin
+    /// decir cual es el bug que la operadora reporto como "43 vs 53".
+    /// </summary>
+    [HttpGet("{id:int}/piezas")]
+    [ProducesResponseType(typeof(ListaPiezasResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPiezas(
+        [FromRoute] int id,
+        CancellationToken ct)
+    {
+        return FromResult(await _service.GetPiezasAsync(id, ct));
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  NIVEL 3 — circuitos
     // ══════════════════════════════════════════════════════════════════════════

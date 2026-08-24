@@ -199,7 +199,11 @@ public sealed class ListasService : IListasService
                     // Columna del parche 1. Si la instancia todavía no lo tiene
                     // aplicado, GetInt devuelve null y esto queda en 0 en vez
                     // de reventar.
-                    CircuitosPendientes = d.GetInt("circuitos_pendientes") ?? 0
+                    CircuitosPendientes = d.GetInt("circuitos_pendientes") ?? 0,
+                    // Columna del SQL v2. Misma defensa: 0 si el servidor
+                    // todavia no lo tiene. Es la unica de las tres que esta
+                    // en PIEZAS (VINs distintos).
+                    PiezasPendientes    = d.GetInt("piezas_pendientes")    ?? 0
                 })
                 .ToList();
 
@@ -519,6 +523,53 @@ public sealed class ListasService : IListasService
         {
             _logger.LogError(ex, "Error en GetGruposMarcados prioridad={P}", prioridadId);
             return ServiceResult<GruposMarcadosResponse>.Fail(
+                500, ErrInterno, ErrorCodes.Kiteo500);
+        }
+    }
+
+    public async Task<ServiceResult<ListaPiezasResponse>> GetPiezasAsync(
+        int listaId, CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _repo.PiezasAsync(listaId, ct);
+
+            var lista = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .ToList();
+
+            // El SP devuelve (http_status, code, message) cuando la lista no
+            // existe. Sin esta rama el 404 se serializaba como una "pieza"
+            // vacia y el cliente pintaba una fila fantasma.
+            var primero = lista.FirstOrDefault();
+            if (primero is not null && primero.ContainsKey("http_status"))
+            {
+                var st = primero.GetInt("http_status") ?? 500;
+                if (st != 200) return DesdeSp<ListaPiezasResponse>(primero, st, "GetPiezas");
+            }
+
+            var piezas = lista
+                .Where(d => d.ContainsKey("vin"))
+                .Select(d => new ListaPiezaItem
+                {
+                    Vin              = d.GetStr("vin") ?? string.Empty,
+                    Grupo            = d.GetStr("grupo"),
+                    Locacion         = d.GetInt("locacion"),
+                    VinDesc          = d.GetStr("vin_desc"),
+                    Secuencia        = d.GetStr("secuencia"),
+                    CircuitosFaltan  = d.GetInt("circuitos_faltan")  ?? 0,
+                    CircuitosCedidos = d.GetInt("circuitos_cedidos") ?? 0,
+                    Circuitos        = d.GetStr("circuitos") ?? string.Empty
+                })
+                .ToList();
+
+            return ServiceResult<ListaPiezasResponse>.Ok(
+                new ListaPiezasResponse(true, piezas.Count, piezas));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en GetPiezas id={Id}", listaId);
+            return ServiceResult<ListaPiezasResponse>.Fail(
                 500, ErrInterno, ErrorCodes.Kiteo500);
         }
     }
