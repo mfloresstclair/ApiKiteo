@@ -99,7 +99,7 @@ stages:
 
       - task: PowerShell@2
         displayName: 'Deploy + validar BACKUP'
-        continueOnError: true
+        #continueOnError: true
         inputs:
           targetType: 'inline'
           script: |
