@@ -845,6 +845,16 @@ public sealed record ListaDetalleItem
     public int PendienteActual { get; init; }
     public int TrabajadoActual { get; init; }
     /// <summary>
+    /// LA ORDEN DE LA SEMANA para este circuito: todo lo que trae la semana,
+    /// de TODOS los grupos, kiteado y pendiente.
+    ///
+    /// Alcance distinto a PendienteActual a proposito. La operadora surte
+    /// contra la orden, no contra el faltante: si le faltan 76 y la orden trae
+    /// 100, va por los 100. No lo compares ni lo dividas con los otros dos.
+    /// 0 si el servidor todavia no tiene el parche 2.
+    /// </summary>
+    public int OrdenSemana { get; init; }
+    /// <summary>
     /// null = el circuito es de esta lista. Con valor = pertenece a esa
     /// prioridad mayor, y aquí sale solo como referencia.
     /// </summary>

@@ -411,6 +411,10 @@ public sealed class ListasService : IListasService
                     NotaArea        = d.GetStr("nota_area"),
                     PendienteActual = d.GetInt("pendiente_actual") ?? 0,
                     TrabajadoActual = d.GetInt("trabajado_actual") ?? 0,
+                    // Columna del parche 2. 0 si la instancia no lo tiene: la
+                    // UI esconde la columna en vez de enseñar "orden 0", que
+                    // seria mentira sobre un circuito que si tiene orden.
+                    OrdenSemana     = d.GetInt("orden_semana")     ?? 0,
                     CedidoAOrden    = d.GetInt("cedido_a_orden")   // null = es de esta lista
                 })
                 .ToList();
