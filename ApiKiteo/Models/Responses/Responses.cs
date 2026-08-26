@@ -558,15 +558,17 @@ public sealed record LiberacionSemanaItem
     public string? CreadoEn { get; init; }
 }
 
-/// <summary>POST /api/liberacion/resumen — det=0</summary>
+/// <summary>POST /api/liberacion — resumen (det=0)</summary>
 public sealed record LiberacionResumenItem
 {
+    public string Hoja { get; init; } = string.Empty;   
+    public string Tipo { get; init; } = string.Empty;   
     public string Item { get; init; } = string.Empty;
     public decimal Cant { get; init; }
     public string Cliente { get; init; } = string.Empty;
 }
 
-/// <summary>POST /api/liberacion/detalle — det=1</summary>
+/// <summary>POST /api/liberacion — detalle (det=1)</summary>
 public sealed record LiberacionDetalleItem
 {
     public string Wkname { get; init; } = string.Empty;
@@ -575,8 +577,8 @@ public sealed record LiberacionDetalleItem
     public decimal QtyOrdered { get; init; }
     public string Cliente { get; init; } = string.Empty;
     public string Vin { get; init; } = string.Empty;
+    public string Hoja { get; init; } = string.Empty;   
 }
-
 public sealed record LiberacionSemanasResponse(
     bool Ok,
     int Total,

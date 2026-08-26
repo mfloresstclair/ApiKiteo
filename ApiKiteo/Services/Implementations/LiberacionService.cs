@@ -112,12 +112,14 @@ public sealed class LiberacionService : ILiberacionService
 
             var resumen = resumenRows
                 .Select(r => (IDictionary<string, object?>)r)
-                .Select(d => new LiberacionResumenItem
-                {
-                    Item = d.GetStr("item") ?? string.Empty,
-                    Cant = GetDecimal(d.GetValueOrDefault("Cant")),
-                    Cliente = d.GetStr("cliente") ?? string.Empty
-                })
+.Select(d => new LiberacionResumenItem
+{
+    Hoja = d.GetStr("hoja") ?? string.Empty,     // ← NUEVO
+    Tipo = d.GetStr("tipo") ?? string.Empty,     // ← NUEVO
+    Item = d.GetStr("item") ?? string.Empty,
+    Cant = GetDecimal(d.GetValueOrDefault("Cant")),
+    Cliente = d.GetStr("cliente") ?? string.Empty
+})
                 .ToList();
 
             var detalle = detalleRows
@@ -129,7 +131,8 @@ public sealed class LiberacionService : ILiberacionService
                     Item = d.GetStr("item") ?? string.Empty,
                     QtyOrdered = GetDecimal(d.GetValueOrDefault("qty_ordered")),
                     Cliente = d.GetStr("cliente") ?? string.Empty,
-                    Vin = d.GetStr("vin") ?? string.Empty
+                    Vin = d.GetStr("vin") ?? string.Empty,
+                    Hoja = d.GetStr("hoja") ?? string.Empty
                 })
                 .ToList();
 
