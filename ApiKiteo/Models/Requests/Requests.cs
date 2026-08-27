@@ -188,6 +188,31 @@ public sealed record LiberacionCrearRequest(
     [Required] List<string> Wknames,
     bool Sobreescribir = false
 );
+
+/// <summary>Una fila del resumen que se envio a Corte.</summary>
+public sealed record LiberacionSnapshotItemRequest(
+    [Required] string Hoja,
+    string? Tipo,
+    [Required] string Item,
+    int Cant,
+    [Required] string Cliente
+);
+
+/// <summary>
+/// POST /api/liberacion/{loteId}/snapshot
+/// Lo manda el WinForm despues de que el correo sale, con el MISMO resumen que
+/// uso para armar el Excel. No se recalcula del lado del servidor a proposito:
+/// lo que se congela es lo que Corte recibio, no lo que la query diria ahora.
+/// El ORDEN de Items es el orden de las filas del Excel y se conserva.
+/// </summary>
+public sealed record LiberacionSnapshotRequest(
+    [Required] string Username,
+    [Required] List<LiberacionSnapshotItemRequest> Items,
+    string? Destinatarios = null,
+    string? WkEtiqueta = null,
+    string? Cliente = null,
+    string? Archivo = null
+);
 public sealed record WksCacheRefreshRequest(
     [Required] string Wkname
 );

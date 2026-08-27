@@ -327,6 +327,31 @@ public interface ILiberacionRepository
     /// </summary>
     Task<DateOnly?> GetFechaCorteAsync(
         int semana, int anio, CancellationToken ct = default);
+
+    /// <summary>
+    /// Congela el resumen que se envió a Corte y marca el lote como Enviado.
+    /// Ejecuta: Kit_vin_liberacion_snapshot_guardar
+    /// </summary>
+    Task<IEnumerable<dynamic>> GuardarSnapshotAsync(
+        int loteId, string username, string jsonResumen,
+        string? destinatarios, string? wkEtiqueta, string? cliente, string? archivo,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Lee un lote enviado — 3 result sets via GridReader:
+    ///   RS1: cabecera   RS2: resumen congelado   RS3: semanas
+    /// Sin JOIN a Vines: un lote de hace meses se lee igual que el de hoy.
+    /// Ejecuta: Kit_vin_liberacion_snapshot_get
+    /// </summary>
+    Task<(IEnumerable<dynamic> Lote, IEnumerable<dynamic> Resumen, IEnumerable<dynamic> Semanas)>
+        GetSnapshotAsync(int loteId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lotes ya enviados, para el selector de reimpresión.
+    /// Ejecuta: Kit_vin_liberacion_historial
+    /// </summary>
+    Task<IEnumerable<dynamic>> HistorialAsync(
+        string cliente = "TODOS", int top = 50, CancellationToken ct = default);
 }
 public interface ISchedulingRepository
 {

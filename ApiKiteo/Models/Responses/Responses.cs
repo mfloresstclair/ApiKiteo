@@ -651,6 +651,80 @@ public sealed record LiberacionListResponse(
     IReadOnlyList<LoteResumenItem> Resultados
 );
 
+// ─── Liberación — snapshot / trazabilidad ─────────────────────────────────────
+
+/// <summary>POST /api/liberacion/{loteId}/snapshot</summary>
+public sealed record LiberacionSnapshotGuardarResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    int TotalItems
+);
+
+/// <summary>Una fila del resumen congelado. Es exactamente lo que fue al Excel.</summary>
+public sealed record LiberacionSnapshotItem
+{
+    public string Hoja { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
+    public string Item { get; init; } = string.Empty;
+    public int Cant { get; init; }
+    public string Cliente { get; init; } = string.Empty;
+}
+
+/// <summary>Cabecera del lote enviado.</summary>
+public sealed record LiberacionSnapshotCabecera
+{
+    public int LoteId { get; init; }
+    public string LiberadoPor { get; init; } = string.Empty;
+    public string? LiberadoEn { get; init; }
+    public string? EnviadoEn { get; init; }
+    public string? EnviadoPor { get; init; }
+    public string? Destinatarios { get; init; }
+    public string? WkEtiqueta { get; init; }
+    public string? Cliente { get; init; }
+    public string? Archivo { get; init; }
+    public int TotalItems { get; init; }
+    public string Estatus { get; init; } = string.Empty;   // Creado | Enviado | Reemplazado
+    public int TotalSemanas { get; init; }
+}
+
+/// <summary>Semana del lote, tal como quedó al momento del envío.</summary>
+public sealed record LiberacionSnapshotSemana
+{
+    public string Wkname { get; init; } = string.Empty;
+    public string Estatus { get; init; } = string.Empty;
+    public string? Fechacorte { get; init; }
+}
+
+/// <summary>GET /api/liberacion/{loteId}/snapshot</summary>
+public sealed record LiberacionSnapshotGetResponse(
+    bool Ok,
+    LiberacionSnapshotCabecera? Lote,
+    IReadOnlyList<LiberacionSnapshotItem> Resumen,
+    IReadOnlyList<LiberacionSnapshotSemana> Semanas
+);
+
+/// <summary>Fila del selector de reimpresión.</summary>
+public sealed record LiberacionHistorialItem
+{
+    public int LoteId { get; init; }
+    public string? WkEtiqueta { get; init; }
+    public string? Cliente { get; init; }
+    public string? EnviadoEn { get; init; }
+    public string? EnviadoPor { get; init; }
+    public int TotalItems { get; init; }
+    public string? Archivo { get; init; }
+    public string Estatus { get; init; } = string.Empty;
+    public int TotalSemanas { get; init; }
+}
+
+/// <summary>GET /api/liberacion/historial</summary>
+public sealed record LiberacionHistorialResponse(
+    bool Ok,
+    int Total,
+    IReadOnlyList<LiberacionHistorialItem> Resultados
+);
+
 public sealed record SchedulingSemanaItem
 {
     public string Wkname { get; init; } = string.Empty;

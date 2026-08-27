@@ -355,4 +355,169 @@ public sealed class LiberacionService : ILiberacionService
                 500, "Error al consultar SytelineOut.", ErrorCodes.Kiteo500);
         }
     }
+
+    // ── POST /api/liberacion/{loteId}/snapshot ────────────────────────────────
+
+    public async Task<ServiceResult<LiberacionSnapshotGuardarResponse>> GuardarSnapshotAsync(
+        int loteId, LiberacionSnapshotRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Snapshot liberación | lote={L} usuario={U} items={N}",
+                loteId, request.Username, request.Items.Count);
+
+            // El ORDEN del array ES el orden de las filas del Excel — el SP lo
+            // conserva con el [key] de OPENJSON. No reordenar aquí.
+            var json = JsonSerializer.Serialize(new
+            {
+                items = request.Items.Select(i => new
+                {
+                    hoja    = i.Hoja,
+                    tipo    = i.Tipo ?? string.Empty,
+                    item    = i.Item,
+                    cant    = i.Cant,
+                    cliente = i.Cliente
+                })
+            });
+
+            var rows = await _repo.GuardarSnapshotAsync(
+                loteId, request.Username, json,
+                request.Destinatarios, request.WkEtiqueta,
+                request.Cliente, request.Archivo, ct);
+
+            var primera = rows.Select(r => (IDictionary<string, object?>)r).FirstOrDefault();
+            if (primera is null)
+                return ServiceResult<LiberacionSnapshotGuardarResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code       = primera.GetStr("code") ?? string.Empty;
+            var mensaje    = primera.GetStr("message") ?? string.Empty;
+            var total      = Convert.ToInt32(primera.GetValueOrDefault("total_items") ?? 0);
+
+            if (httpStatus != 200)
+            {
+                _logger.LogWarning(
+                    "Snapshot {Code} | lote={L} usuario={U}", code, loteId, request.Username);
+                return ServiceResult<LiberacionSnapshotGuardarResponse>.Fail(
+                    httpStatus, mensaje, code);
+            }
+
+            _logger.LogInformation(
+                "Snapshot OK | lote={L} items={N} archivo={A}",
+                loteId, total, request.Archivo);
+
+            return ServiceResult<LiberacionSnapshotGuardarResponse>.Ok(
+                new LiberacionSnapshotGuardarResponse(true, code, mensaje, total));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error guardando snapshot lote={L}", loteId);
+            return ServiceResult<LiberacionSnapshotGuardarResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── GET /api/liberacion/{loteId}/snapshot ─────────────────────────────────
+
+    public async Task<ServiceResult<LiberacionSnapshotGetResponse>> GetSnapshotAsync(
+        int loteId, CancellationToken ct = default)
+    {
+        try
+        {
+            var (loteRows, resumenRows, semanaRows) = await _repo.GetSnapshotAsync(loteId, ct);
+
+            var primera = loteRows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null || primera.ContainsKey("http_status"))
+                return ServiceResult<LiberacionSnapshotGetResponse>.Fail(
+                    404, "Lote no encontrado.", "LIB_404");
+
+            var cabecera = new LiberacionSnapshotCabecera
+            {
+                LoteId        = Convert.ToInt32(primera.GetValueOrDefault("lote_id") ?? 0),
+                LiberadoPor   = primera.GetStr("liberado_por") ?? string.Empty,
+                LiberadoEn    = primera.GetValueOrDefault("liberado_en")?.ToString(),
+                EnviadoEn     = primera.GetValueOrDefault("enviado_en")?.ToString(),
+                EnviadoPor    = primera.GetStr("enviado_por"),
+                Destinatarios = primera.GetStr("destinatarios"),
+                WkEtiqueta    = primera.GetStr("wk_etiqueta"),
+                Cliente       = primera.GetStr("cliente"),
+                Archivo       = primera.GetStr("archivo"),
+                TotalItems    = Convert.ToInt32(primera.GetValueOrDefault("total_items") ?? 0),
+                Estatus       = primera.GetStr("estatus") ?? string.Empty,
+                TotalSemanas  = Convert.ToInt32(primera.GetValueOrDefault("total_semanas") ?? 0)
+            };
+
+            var resumen = resumenRows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new LiberacionSnapshotItem
+                {
+                    Hoja    = d.GetStr("hoja") ?? string.Empty,
+                    Tipo    = d.GetStr("tipo") ?? string.Empty,
+                    Item    = d.GetStr("item") ?? string.Empty,
+                    Cant    = Convert.ToInt32(d.GetValueOrDefault("cant") ?? 0),
+                    Cliente = d.GetStr("cliente") ?? string.Empty
+                })
+                .ToList();
+
+            var semanas = semanaRows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new LiberacionSnapshotSemana
+                {
+                    Wkname     = d.GetStr("wkname") ?? string.Empty,
+                    Estatus    = d.GetStr("estatus") ?? string.Empty,
+                    Fechacorte = d.GetStr("fechacorte")
+                })
+                .ToList();
+
+            return ServiceResult<LiberacionSnapshotGetResponse>.Ok(
+                new LiberacionSnapshotGetResponse(true, cabecera, resumen, semanas));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error leyendo snapshot lote={L}", loteId);
+            return ServiceResult<LiberacionSnapshotGetResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── GET /api/liberacion/historial ─────────────────────────────────────────
+
+    public async Task<ServiceResult<LiberacionHistorialResponse>> HistorialAsync(
+        string cliente, int top, CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _repo.HistorialAsync(cliente, top, ct);
+
+            var resultados = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new LiberacionHistorialItem
+                {
+                    LoteId       = Convert.ToInt32(d.GetValueOrDefault("lote_id") ?? 0),
+                    WkEtiqueta   = d.GetStr("wk_etiqueta"),
+                    Cliente      = d.GetStr("cliente"),
+                    EnviadoEn    = d.GetValueOrDefault("enviado_en")?.ToString(),
+                    EnviadoPor   = d.GetStr("enviado_por"),
+                    TotalItems   = Convert.ToInt32(d.GetValueOrDefault("total_items") ?? 0),
+                    Archivo      = d.GetStr("archivo"),
+                    Estatus      = d.GetStr("estatus") ?? string.Empty,
+                    TotalSemanas = Convert.ToInt32(d.GetValueOrDefault("total_semanas") ?? 0)
+                })
+                .ToList();
+
+            return ServiceResult<LiberacionHistorialResponse>.Ok(
+                new LiberacionHistorialResponse(true, resultados.Count, resultados));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en historial de liberaciones cliente={C}", cliente);
+            return ServiceResult<LiberacionHistorialResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
 }

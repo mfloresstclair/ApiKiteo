@@ -137,4 +137,64 @@ ORDER BY COUNT(*) DESC;";
         return DateOnly.FromDateTime(result.Value);
     }
 
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> GuardarSnapshotAsync(
+        int loteId, string username, string jsonResumen,
+        string? destinatarios, string? wkEtiqueta, string? cliente, string? archivo,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.LiberacionSnapshotGuardar,
+            new
+            {
+                lote_id     = loteId,
+                username,
+                jsonresumen = jsonResumen,
+                destinatarios,
+                wk_etiqueta = wkEtiqueta,
+                cliente,
+                archivo
+            },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
+
+    /// <inheritdoc/>
+    public async Task<(IEnumerable<dynamic> Lote, IEnumerable<dynamic> Resumen, IEnumerable<dynamic> Semanas)>
+        GetSnapshotAsync(int loteId, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+
+        using var grid = await conn.QueryMultipleAsync(
+            _sp.LiberacionSnapshotGet,
+            new { lote_id = loteId },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+
+        var lote = (await grid.ReadAsync<dynamic>()).ToList();
+
+        // Si el SP hizo RETURN temprano (404) no existen RS2 ni RS3 — leerlos
+        // lanzaría excepción. Mismo patrón que AdminRepository.PreviewSemanaAsync.
+        var primera = lote.Count > 0 ? (IDictionary<string, object?>)lote[0] : null;
+        if (primera?.ContainsKey("http_status") == true)
+            return (lote, Enumerable.Empty<dynamic>(), Enumerable.Empty<dynamic>());
+
+        var resumen = (await grid.ReadAsync<dynamic>()).ToList();
+        var semanas = (await grid.ReadAsync<dynamic>()).ToList();
+
+        return (lote, resumen, semanas);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> HistorialAsync(
+        string cliente = "TODOS", int top = 50, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.LiberacionHistorial,
+            new { cliente, top },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
 }

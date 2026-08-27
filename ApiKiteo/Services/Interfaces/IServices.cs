@@ -194,6 +194,23 @@ public interface ILiberacionService
         string cliente, CancellationToken ct = default);
     Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(
     int semana, int anio, CancellationToken ct = default);
+
+    /// <summary>
+    /// Congela el resumen enviado a Corte. Lo llama el WinForm DESPUÉS de que
+    /// el correo sale, con el mismo resumen que usó para armar el Excel.
+    /// </summary>
+    Task<ServiceResult<LiberacionSnapshotGuardarResponse>> GuardarSnapshotAsync(
+        int loteId, LiberacionSnapshotRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Devuelve el lote tal como se envió: cabecera, resumen congelado y semanas.
+    /// </summary>
+    Task<ServiceResult<LiberacionSnapshotGetResponse>> GetSnapshotAsync(
+        int loteId, CancellationToken ct = default);
+
+    /// <summary>Lotes ya enviados, para el selector de reimpresión.</summary>
+    Task<ServiceResult<LiberacionHistorialResponse>> HistorialAsync(
+        string cliente, int top, CancellationToken ct = default);
 }
 public interface ISchedulingService
 {

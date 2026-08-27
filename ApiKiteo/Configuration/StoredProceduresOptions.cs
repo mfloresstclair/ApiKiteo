@@ -57,6 +57,9 @@ public sealed class StoredProceduresOptions
     public string LiberacionGet { get; init; } = string.Empty;  // Kit_vin_liberacion_get
     public string CorteIngresar { get; init; } = string.Empty;  // Kit_vin_corte_ingresar
     public string LiberacionList { get; init; } = string.Empty;
+    public string LiberacionSnapshotGuardar { get; init; } = string.Empty;  // Kit_vin_liberacion_snapshot_guardar
+    public string LiberacionSnapshotGet { get; init; } = string.Empty;  // Kit_vin_liberacion_snapshot_get
+    public string LiberacionHistorial { get; init; } = string.Empty;  // Kit_vin_liberacion_historial
 
     public string Scheduling { get; init; } = string.Empty;
 

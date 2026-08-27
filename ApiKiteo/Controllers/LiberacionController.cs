@@ -199,6 +199,82 @@ public sealed class LiberacionController : KiteoBaseController
         return FromResult(await _service.GetFechaCorteAsync(semana, anio, ct));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Trazabilidad — Fase 4
+    // ═══════════════════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// Congela el resumen enviado a Corte y marca el lote como Enviado.
+    /// </summary>
+    /// <remarks>
+    /// Lo llama el WinForm DESPUÉS de que el correo sale, con el mismo resumen
+    /// que usó para armar el Excel. El servidor NO lo recalcula: lo que se
+    /// congela es lo que Corte recibió, no lo que la query diría hoy.
+    /// El orden de 'items' es el orden de las filas del Excel y se conserva.
+    /// </remarks>
+    [HttpPost("{loteId:int}/snapshot")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GuardarSnapshot(
+        [FromRoute] int loteId,
+        [FromBody] LiberacionSnapshotRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
+        if (loteId <= 0)
+            return BadRequest(ErrorResponse.Create(
+                "loteId debe ser mayor a 0.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        if (request.Items is null || request.Items.Count == 0)
+            return BadRequest(ErrorResponse.Create(
+                "El resumen viene vacío — no hay nada que congelar.",
+                ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.GuardarSnapshotAsync(loteId, request, ct));
+    }
+
+    /// <summary>
+    /// Devuelve el lote tal como se envió: cabecera, resumen congelado y semanas.
+    /// </summary>
+    /// <remarks>
+    /// No consulta Vines — un lote de hace meses se lee igual que el de hoy.
+    /// </remarks>
+    [HttpGet("{loteId:int}/snapshot")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSnapshot(
+        [FromRoute] int loteId, CancellationToken ct)
+    {
+        if (loteId <= 0)
+            return BadRequest(ErrorResponse.Create(
+                "loteId debe ser mayor a 0.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.GetSnapshotAsync(loteId, ct));
+    }
+
+    /// <summary>
+    /// Lotes ya enviados, más recientes primero. Alimenta el selector de
+    /// reimpresión del WinForm.
+    /// </summary>
+    [HttpGet("historial")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Historial(
+        [FromQuery] string? cliente,
+        [FromQuery] int top = 50,
+        CancellationToken ct = default)
+    {
+        var filtro = string.IsNullOrWhiteSpace(cliente) ? "TODOS" : cliente.Trim();
+        if (top < 1) top = 1;
+        if (top > 500) top = 500;
+
+        return FromResult(await _service.HistorialAsync(filtro, top, ct));
+    }
 }
