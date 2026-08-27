@@ -182,13 +182,13 @@ public sealed class ListasRepository : IListasRepository
     // ── POST /listas/:id/items ────────────────────────────────────────────────
 
     public async Task<dynamic?> AgregarItemsAsync(
-        int listaId, string jsonItems, string? etiqueta, string? creadoPor,
-        CancellationToken ct = default)
+        int listaId, string jsonItems, string? jsonGrupos, string? etiqueta,
+        string? creadoPor, CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryFirstOrDefaultAsync(
             _sp.ListaAgregar,
-            new { lista_id = listaId, jsonItems, etiqueta, creado_por = creadoPor },
+            new { lista_id = listaId, jsonItems, jsonGrupos, etiqueta, creado_por = creadoPor },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: TimeoutSp);
     }

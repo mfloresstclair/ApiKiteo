@@ -410,8 +410,8 @@ public interface IListasRepository
         int listaId, CancellationToken ct = default);
 
     Task<dynamic?> AgregarItemsAsync(
-        int listaId, string jsonItems, string? etiqueta, string? creadoPor,
-        CancellationToken ct = default);
+        int listaId, string jsonItems, string? jsonGrupos, string? etiqueta,
+        string? creadoPor, CancellationToken ct = default);
 
     // `username` va a Boss_transactions: vaciar una lista item por item no
     // dejaba ningún rastro, a diferencia de borrarla completa.

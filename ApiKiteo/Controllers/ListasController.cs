@@ -280,6 +280,10 @@ public sealed class ListasController : KiteoBaseController
     /// Agrega circuitos a una lista. Cada item puede traer su propia `etiqueta`;
     /// la `etiqueta` del request es solo el default para los que no la traen.
     ///
+    /// `grupos` amplia el ALCANCE de la lista. Mandarlo no es opcional cuando
+    /// el filtro trae grupos: sin ellos los circuitos entran pero quedan fuera
+    /// del alcance, y el grupo no se colorea en el panel.
+    ///
     /// Respuesta: { ok, insertados, movidos, yaEnPrioridadMayor }.
     ///   `movidos` NO mueve nada de otra lista — cuenta los circuitos que YA
     ///   estaban en ESTA lista y cambiaron de etiqueta (el nombre es histórico).

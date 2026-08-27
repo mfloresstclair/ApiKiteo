@@ -276,7 +276,17 @@ public sealed record ListaReordenarRequest(
 public sealed record ListaAgregarRequest(
     [Required] List<ListaItemInput> Items,
     [StringLength(100)] string? Etiqueta = null,
-    [StringLength(20)]  string? CreadoPor = null
+    [StringLength(20)]  string? CreadoPor = null,
+    /// <summary>
+    /// Los GRUPOS del filtro con que se agregaron estos circuitos. Se SUMAN al
+    /// alcance de la lista.
+    ///
+    /// Sin esto, agregar un grupo nuevo a una lista existente mete los
+    /// circuitos pero deja `kit_lista_grupo` igual: los conteos de esos
+    /// circuitos quedan fuera del alcance y — lo que se ve — el grupo nunca
+    /// se colorea en el panel F6.
+    /// </summary>
+    IReadOnlyList<string>? Grupos = null
 );
 
 public sealed record ListaNotaRequest(
