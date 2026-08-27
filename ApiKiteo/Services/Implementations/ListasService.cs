@@ -437,8 +437,15 @@ public sealed class ListasService : IListasService
         {
             var jsonItems = JsonSerializer.Serialize(request.Items, _camelCase);
 
+            // null cuando no vienen: el SP distingue "no me mandaron grupos" de
+            // "me mandaron una lista vacia", y en el primer caso no toca el
+            // alcance en vez de borrarlo.
+            var jsonGrupos = request.Grupos is { Count: > 0 }
+                ? JsonSerializer.Serialize(request.Grupos)
+                : null;
+
             var row = await _repo.AgregarItemsAsync(
-                listaId, jsonItems, request.Etiqueta, request.CreadoPor, ct);
+                listaId, jsonItems, jsonGrupos, request.Etiqueta, request.CreadoPor, ct);
 
             if (row is null)
                 return ServiceResult<ListaAgregarResponse>.Fail(
