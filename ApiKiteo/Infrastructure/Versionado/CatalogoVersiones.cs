@@ -7,8 +7,8 @@ namespace ApiKiteo.API.Infrastructure.Versionado;
 public sealed record PoliticaCliente(
     Version? Minima,
     Version? Reco,
-    string   Mensaje,
-    string?  RutaInstalador)
+    string Mensaje,
+    string? RutaInstalador)
 {
     /// <summary>Sin politica: nada se bloquea. Es el estado inicial y el de falla.</summary>
     public static readonly PoliticaCliente Inerte = new(null, null, string.Empty, null);
@@ -46,7 +46,7 @@ public sealed class CatalogoVersiones : BackgroundService
 
     private static readonly TimeSpan Intervalo = TimeSpan.FromSeconds(60);
 
-    private readonly IDbConnectionFactory      _db;
+    private readonly IDbConnectionFactory _db;
     private readonly ILogger<CatalogoVersiones> _log;
 
     // volatile: lo escribe el timer, lo leen los hilos de request.
@@ -54,12 +54,12 @@ public sealed class CatalogoVersiones : BackgroundService
     private volatile bool _leidoAlgunaVez;
     private volatile bool _avisoEsquema;      // ultimo estado logueado
     private volatile bool _avisoPromocion;    // ya se aviso que falta GRANT UPDATE
-    private int _esquemaActual  = -1;         // -1 = desconocido → no se bloquea
+    private int _esquemaActual = -1;         // -1 = desconocido → no se bloquea
     private int _fallosSeguidos;              // lecturas fallidas consecutivas
 
     public CatalogoVersiones(IDbConnectionFactory db, ILogger<CatalogoVersiones> log)
     {
-        _db  = db;
+        _db = db;
         _log = log;
     }
 
@@ -176,7 +176,7 @@ public sealed class CatalogoVersiones : BackgroundService
                 var d = (IDictionary<string, object?>)fila;
                 _cliente = new PoliticaCliente(
                     Leer(d["version_minima"] as string),
-                    Leer(d["version_reco"]   as string),
+                    Leer(d["version_reco"] as string),
                     d["mensaje"] as string ?? string.Empty,
                     d["ruta_instalador"] as string);
             }
@@ -213,7 +213,7 @@ public sealed class CatalogoVersiones : BackgroundService
                 _log.LogInformation(
                     "Guard de version activo | minima={M} reco={R} | esquema SQL={E} requerido={Q}",
                     _cliente.Minima?.ToString() ?? "(sin minimo)",
-                    _cliente.Reco?.ToString()   ?? "(sin reco)",
+                    _cliente.Reco?.ToString() ?? "(sin reco)",
                     EsquemaActual, EsquemaRequerido);
             }
 

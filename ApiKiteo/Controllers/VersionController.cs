@@ -28,7 +28,7 @@ public sealed class VersionController : ControllerBase
 
         return Ok(new
         {
-            ok  = true,
+            ok = true,
             api = new
             {
                 version = typeof(VersionController).Assembly.GetName().Version?.ToString(3)
@@ -37,22 +37,27 @@ public sealed class VersionController : ControllerBase
             },
             sql = new
             {
-                esquemaActual    = _cat.EsquemaActual,      // -1 = todavia no se lee
+                esquemaActual = _cat.EsquemaActual,      // -1 = todavia no se lee
                 esquemaRequerido = CatalogoVersiones.EsquemaRequerido,
-                atrasado         = _cat.EsquemaAtrasado
+                atrasado = _cat.EsquemaAtrasado
             },
             cliente = new
             {
-                minima         = pol.Minima?.ToString(),    // null = guard inerte
-                recomendada    = pol.Reco?.ToString(),
-                mensaje        = pol.Mensaje,
+                minima = pol.Minima?.ToString(),    // null = guard inerte
+                recomendada = pol.Reco?.ToString(),
+                mensaje = pol.Mensaje,
                 rutaInstalador = pol.RutaInstalador
             },
             // false = todavia no hubo una lectura buena de kit_app_version.
             // Si esto se queda en false, el guard NO esta protegiendo nada:
             // o falta correr version-guard.sql, o el usuario de la API no tiene
             // permiso de SELECT sobre las dos tablas.
-            catalogoCargado = _cat.Cargado
+            catalogoCargado = _cat.Cargado,
+
+            // Estaciones que reportan 1.0.0.0 — binarios compilados sin
+            // revision. Si esta lista NO esta vacia, esas maquinas se van a
+            // bloquear solas el dia que subas version_minima.
+            sinRevision = _cat.ReportanSinRevision
         });
     }
 }
