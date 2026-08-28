@@ -7,6 +7,13 @@
     <RootNamespace>ApiKiteo.API</RootNamespace>
     <AssemblyName>ApiKiteo.API</AssemblyName>
     <UserSecretsId>api-kiteo-api-secrets</UserSecretsId>
+
+    <!-- GET /version reportaba "1.0.0" siempre porque el csproj no declaraba
+         ninguna. El endpoint existe para contestar "¿el servidor esta atras?"
+         y no podia contestarlo. Subela en cada despliegue. -->
+    <Version>3.1.0</Version>
+    <AssemblyVersion>3.1.0.0</AssemblyVersion>
+    <FileVersion>3.1.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

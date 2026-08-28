@@ -19,4 +19,12 @@ public static class ErrorCodes
     public const string Admin404 = "ADMIN_404";
     public const string Admin409 = "ADMIN_409";
     public const string Kiteo403 = "KITEO_403";
+
+    /// <summary>426 Upgrade Required — el cliente esta por debajo del minimo.
+    /// El cliente EXIGE ver este codigo antes de bloquearse: un 426 de Traefik
+    /// o de un WAF no trae ninguno y por lo tanto no puede apagar una estacion.</summary>
+    public const string Kiteo426 = "KITEO_426";
+
+    /// <summary>503 — SQL esta atras del nivel que esta API necesita.</summary>
+    public const string Kiteo503Esquema = "KITEO_503_ESQUEMA";
 }

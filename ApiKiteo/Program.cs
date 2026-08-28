@@ -2,6 +2,7 @@ using ApiKiteo.API.Configuration;
 using ApiKiteo.API.Infrastructure.Database;
 using ApiKiteo.API.Infrastructure.Ldap;
 using ApiKiteo.API.Infrastructure.Metrics;
+using ApiKiteo.API.Infrastructure.Versionado;
 using ApiKiteo.API.Repositories.Implementations;
 using ApiKiteo.API.Repositories.Interfaces;
 using ApiKiteo.API.Services.Implementations;
@@ -83,6 +84,16 @@ builder.Services.AddScoped<ISchedulingService, SchedulingService>();
 builder.Services.AddScoped<IDescaneoService, DescaneoService>();
 builder.Services.AddScoped<IListasService, ListasService>();
 builder.Services.AddScoped<IExpeditadosService, ExpeditadosService>();
+
+// ─── Guard de version ─────────────────────────────────────────────────────────
+// Las DOS lineas, y en ESTE orden.
+//
+// AddHostedService<CatalogoVersiones>() a secas crearia una SEGUNDA instancia:
+// el timer llenaria una y el middleware leeria la otra, vacia. El guard
+// quedaria permanentemente inerte y en silencio, que es la peor forma de
+// fallar — se ve instalado y en verde.
+builder.Services.AddSingleton<CatalogoVersiones>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CatalogoVersiones>());
 // ─── Controllers + JSON ───────────────────────────────────────────────────────
 builder.Services
     .AddControllers()
@@ -206,6 +217,17 @@ app.UseAuthorization();
 // ── Weekboard SPA ─────────────────────────────────────────────────────────
 app.UseStaticFiles();   // sirve wwwroot/weekboard/index.html
 // No necesita fallback route — es un solo archivo HTML, no hay client-side routing
+// ─── Guard de version ─────────────────────────────────────────────────────────
+// AQUI y no antes. Un middleware solo lo cubren los manejadores registrados
+// ANTES que el: puesto junto a MetricsMiddleware quedaba en el unico tramo del
+// pipeline sin red, y cualquier excepcion suya salia como un 500 sin cuerpo,
+// sin el JSON { exito, mensaje, codigo } que el cliente sabe leer.
+//
+// Despues de UseStaticFiles tambien a proposito: el weekboard se sirve antes de
+// que el guard lo vea. Y sigue contando en metricas, porque MetricsMiddleware
+// va primero.
+app.UseMiddleware<VersionGuardMiddleware>();
+
 app.MapControllers();
 
 // Endpoint de health-check básico

@@ -29,6 +29,16 @@ public sealed class VersionGuardMiddleware
     public const string HeaderEstacion = "X-Kiteo-Estacion";
     public const string HeaderUsuario = "X-Kiteo-Usuario";
 
+    /// <summary>
+    /// "release" o "debug". Solo las release cuentan para promover
+    /// `version_reco`: una build de desarrollo reporta 1.0.0.9999 y dejaria a
+    /// toda la planta con el aviso de actualizar puesto para siempre.
+    ///
+    /// Un cliente que no lo mande se trata como debug — o sea, no promueve.
+    /// La duda no cambia nada, igual que en todo lo demas.
+    /// </summary>
+    public const string HeaderBuild = "X-Kiteo-Build";
+
     /// <summary>Se le pone a las respuestas OK de un cliente que ya se quedo atras.</summary>
     public const string HeaderAviso = "X-Kiteo-Actualizar";
 
@@ -46,14 +56,52 @@ public sealed class VersionGuardMiddleware
         _log  = log;
     }
 
-    public async Task InvokeAsync(HttpContext ctx, CatalogoVersiones cat)
+    /// <summary>
+    /// Rutas que el guard NUNCA toca.
+    ///
+    /// /version y /health porque un cliente bloqueado tiene que poder
+    /// preguntar que necesita, y porque tumbarle el health-check al monitoreo
+    /// convierte "falta correr un script" en "la API se cayo" — y alguien se
+    /// levanta de madrugada con el diagnostico equivocado.
+    ///
+    /// /api/health y /api/metrics porque ESOS son los que se monitorean de
+    /// verdad (MetricsMiddleware los excluye por esos prefijos exactos).
+    ///
+    /// /swagger y la raiz porque Swagger vive en RoutePrefix vacio: apagarlo
+    /// deja sin herramientas justo a quien viene a diagnosticar.
+    /// </summary>
+    private static readonly string[] Exentas =
     {
-        var ruta = ctx.Request.Path.Value ?? string.Empty;
+        "/version", "/health", "/api/health", "/api/metrics", "/swagger", "/weekboard"
+    };
 
-        // /version SIEMPRE contesta. Un cliente bloqueado tiene que poder
-        // preguntar QUE version necesita y DE DONDE bajarla; si el guard tapara
-        // tambien esa puerta, el mensaje de error no podria decir nada util.
-        if (ruta.StartsWith("/version", StringComparison.OrdinalIgnoreCase))
+    private static bool EsExenta(PathString ruta)
+    {
+        // La raiz exacta es Swagger UI. Un StartsWithSegments("/") daria true
+        // para TODO.
+        if (!ruta.HasValue || ruta == "/") return true;
+        foreach (var e in Exentas)
+            if (ruta.StartsWithSegments(e, StringComparison.OrdinalIgnoreCase)) return true;
+        // Cualquier archivo estatico (.js, .css, .html del weekboard).
+        return ruta.Value!.Contains('.', StringComparison.Ordinal);
+    }
+
+    public async Task InvokeAsync(HttpContext ctx)
+    {
+        if (EsExenta(ctx.Request.Path))
+        {
+            await _next(ctx);
+            return;
+        }
+
+        // Resolucion MANUAL y tolerante.
+        //
+        // Con inyeccion por metodo, olvidar el AddSingleton no daba un guard
+        // inerte: daba InvalidOperationException en CADA peticion, o sea la API
+        // entera caida por un error de registro. La duda de configuracion
+        // tampoco bloquea.
+        var cat = ctx.RequestServices.GetService<CatalogoVersiones>();
+        if (cat is null)
         {
             await _next(ctx);
             return;
@@ -65,14 +113,18 @@ public sealed class VersionGuardMiddleware
         // esto se arregla del lado del servidor".
         if (cat.EsquemaAtrasado)
         {
-            _log.LogError("503 por esquema atrasado | SQL={A} requerido={R} | {Ruta}",
-                cat.EsquemaActual, CatalogoVersiones.EsquemaRequerido, ruta);
+            // Debug y no Error: el estado ya se logueo como Error UNA vez, al
+            // cambiar, desde CatalogoVersiones. Aqui seria una linea por
+            // peticion — con 40 estaciones sondeando, cientos de miles al dia,
+            // y el sink de archivo deja de escribir al llegar a 1 GB.
+            _log.LogDebug("503 por esquema atrasado | SQL={A} requerido={R} | {Ruta}",
+                cat.EsquemaActual, CatalogoVersiones.EsquemaRequerido, ctx.Request.Path);
 
-            ctx.Response.Headers["Retry-After"] = "60";
+            if (!ctx.Response.HasStarted) ctx.Response.Headers["Retry-After"] = "60";
             await Responder(ctx, 503,
                 "El servidor esta en mantenimiento: falta aplicar una " +
                 "actualizacion de base de datos. Avisa a sistemas.",
-                "KITEO_503_ESQUEMA");
+                ErrorCodes.Kiteo503Esquema);
             return;
         }
 
@@ -92,23 +144,29 @@ public sealed class VersionGuardMiddleware
         // parsear un header seria el guard causando la falla.
         if (v is null)
         {
-            _log.LogWarning("Version de cliente ilegible '{V}' | estacion={E} usuario={U}",
-                version, Corto(ctx, HeaderEstacion), Corto(ctx, HeaderUsuario));
+            LogUnaVez($"ilegible|{Corto(ctx, HeaderEstacion)}|{version}",
+                () => _log.LogWarning("Version de cliente ilegible '{V}' | estacion={E} usuario={U}",
+                    version, Corto(ctx, HeaderEstacion), Corto(ctx, HeaderUsuario)));
             await _next(ctx);
             return;
         }
 
         if (pol.Minima is not null && v < pol.Minima)
         {
-            _log.LogWarning(
-                "426 cliente viejo | version={V} minima={M} estacion={E} usuario={U} ruta={R}",
-                v, pol.Minima, Corto(ctx, HeaderEstacion), Corto(ctx, HeaderUsuario), ruta);
+            // Una vez por (estacion, usuario, version), no por peticion: una
+            // estacion bloqueada sigue sondeando cada 20 s y el cliente no
+            // tiene backoff. Es un estado, no un evento.
+            LogUnaVez(
+                $"426|{Corto(ctx, HeaderEstacion)}|{Corto(ctx, HeaderUsuario)}|{v}",
+                () => _log.LogWarning(
+                    "426 cliente viejo | version={V} minima={M} estacion={E} usuario={U}",
+                    v, pol.Minima, Corto(ctx, HeaderEstacion), Corto(ctx, HeaderUsuario)));
 
             await Responder(ctx, 426,
                 string.IsNullOrWhiteSpace(pol.Mensaje)
                     ? $"Esta version ({v}) ya no esta soportada. Se necesita la {pol.Minima} o mayor."
                     : pol.Mensaje,
-                "KITEO_426",
+                ErrorCodes.Kiteo426,
                 new
                 {
                     versionActual   = v.ToString(),
@@ -118,6 +176,11 @@ public sealed class VersionGuardMiddleware
             return;
         }
 
+        // Se registra la version para que el servidor sepa que hay una nueva
+        // publicada, sin que nadie tenga que decirselo. Va DESPUES del 426: una
+        // version rechazada no promueve nada.
+        cat.ObservarCliente(v, ctx.Request.Headers[HeaderBuild] == "release");
+
         // Al corriente para trabajar pero hay una mas nueva: se avisa por
         // header en CADA respuesta. El cliente decide si lo enseña; la API no
         // interrumpe a nadie por esto.
@@ -125,6 +188,17 @@ public sealed class VersionGuardMiddleware
             ctx.Response.Headers[HeaderAviso] = pol.Reco.ToString();
 
         await _next(ctx);
+    }
+
+    // Dedupe de log. Acotado a 500 claves: es (estacion, usuario, version) y
+    // en la planta hay decenas, pero un cliente que mande basura variable en el
+    // header no puede hacer crecer esto sin limite.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _vistos = new();
+
+    private static void LogUnaVez(string clave, Action escribir)
+    {
+        if (_vistos.Count > 500) _vistos.Clear();
+        if (_vistos.TryAdd(clave, 0)) escribir();
     }
 
     private static string Corto(HttpContext ctx, string header)
