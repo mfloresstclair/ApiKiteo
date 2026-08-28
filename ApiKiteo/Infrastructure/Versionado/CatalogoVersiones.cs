@@ -53,6 +53,7 @@ public sealed class CatalogoVersiones : BackgroundService
     private volatile PoliticaCliente _cliente = PoliticaCliente.Inerte;
     private volatile bool _leidoAlgunaVez;
     private volatile bool _avisoEsquema;      // ultimo estado logueado
+    private volatile bool _avisoPromocion;    // ya se aviso que falta GRANT UPDATE
     private int _esquemaActual  = -1;         // -1 = desconocido → no se bloquea
     private int _fallosSeguidos;              // lecturas fallidas consecutivas
 
@@ -166,7 +167,24 @@ public sealed class CatalogoVersiones : BackgroundService
             Volatile.Write(ref _esquemaActual, esq ?? -1);
             Volatile.Write(ref _fallosSeguidos, 0);
 
-            await PromoverRecoAsync(conn, ct);
+            // En su propio try: un UPDATE sin permiso NO puede contaminar el
+            // estado de las lecturas. Sin esto, subia por el catch de abajo,
+            // contaba como lectura fallida y a los 3 ciclos ponia el esquema en
+            // -1 — con las lecturas funcionando perfectamente. Falla seguro,
+            // pero /version quedaria mintiendo sobre lo que si puede leer.
+            try { await PromoverRecoAsync(conn, ct); }
+            catch (Exception exUp)
+            {
+                if (!_avisoPromocion)
+                {
+                    _avisoPromocion = true;
+                    _log.LogWarning(exUp,
+                        "No se pudo subir version_reco sola. Falta GRANT UPDATE ON " +
+                        "dbo.kit_app_version a la cuenta del servicio. Todo lo demas " +
+                        "sigue funcionando; el aviso de version nueva hay que ponerlo " +
+                        "a mano con un UPDATE.");
+                }
+            }
 
             if (!_leidoAlgunaVez)
             {
