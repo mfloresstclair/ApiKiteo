@@ -1,5 +1,4 @@
-﻿
-using ApiKiteo.API.Common;
+﻿using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Requests;
 using ApiKiteo.API.Models.Responses;
 using ApiKiteo.API.Repositories.Interfaces;
@@ -35,16 +34,38 @@ public sealed class ExpeditadosService : IExpeditadosService
                 {
                     Id = Convert.ToInt32(d.GetValueOrDefault("id") ?? 0),
                     Vin = d.GetStr("vin") ?? string.Empty,
-                    WknameOrigen = d.GetStr("wkname_origen") ?? string.Empty,
+                    // NO se normaliza a string.Empty: un SIN_WKNAME tiene wkname_origen
+                    // NULL de verdad (no tiene semana), y el front lo usa para
+                    // deshabilitar el boton Mover.
+                    WknameOrigen = d.GetStr("wkname_origen"),
                     Tipo = d.GetStr("tipo"),
                     DueDate = d.GetStr("due_date"),
                     DetectadoEn = d.GetStr("detectado_en"),
-                    Resolucion = d.GetStr("resolucion") ?? string.Empty
+                    Resolucion = d.GetStr("resolucion") ?? string.Empty,
+
+                    // Detector v2 (8/2026)
+                    MotivoDeteccion = d.GetStr("motivo_deteccion"),
+                    DiasVencido = ToNullableInt(d.GetValueOrDefault("dias_vencido")),
+                    DiasPendiente = ToNullableInt(d.GetValueOrDefault("dias_pendiente"))
                 })
                 .ToList();
 
             if (lista.Count > 0)
-                _logger.LogWarning("Expeditados PENDIENTES: {N}", lista.Count);
+            {
+                var sinSemana = lista.Count(x => x.MotivoDeteccion == "SIN_WKNAME");
+                var vencidos = lista.Count(x => x.DiasVencido > 0);
+
+                _logger.LogWarning(
+                    "Expeditados PENDIENTES: {N} (sin semana: {S}, vencidos: {V})",
+                    lista.Count, sinSemana, vencidos);
+
+                // Un VIN sin semana no entra a NINGUNA macro y no aparece en ninguna
+                // pantalla de piso: se loguea aparte para que no pase inadvertido.
+                foreach (var x in lista.Where(x => x.MotivoDeteccion == "SIN_WKNAME"))
+                    _logger.LogWarning(
+                        "VIN sin semana asignada: {Vin} (tipo {Tipo}, due {Due})",
+                        x.Vin, x.Tipo, x.DueDate);
+            }
 
             return ServiceResult<ExpeditadosListResponse>.Ok(
                 new ExpeditadosListResponse(true, lista.Count, lista));
@@ -145,6 +166,10 @@ public sealed class ExpeditadosService : IExpeditadosService
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }
     }
+
+    // Los conteos calculados del SP pueden venir NULL (no vencido / sin fecha).
+    private static int? ToNullableInt(object? v)
+        => v is null || v is DBNull ? null : Convert.ToInt32(v);
 
     // ── GET /api/comunizacion/validar ───────────────────────────────────────
 

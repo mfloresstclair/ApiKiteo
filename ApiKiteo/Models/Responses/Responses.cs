@@ -561,8 +561,8 @@ public sealed record LiberacionSemanaItem
 /// <summary>POST /api/liberacion — resumen (det=0)</summary>
 public sealed record LiberacionResumenItem
 {
-    public string Hoja { get; init; } = string.Empty;   
-    public string Tipo { get; init; } = string.Empty;   
+    public string Hoja { get; init; } = string.Empty;
+    public string Tipo { get; init; } = string.Empty;
     public string Item { get; init; } = string.Empty;
     public decimal Cant { get; init; }
     public string Cliente { get; init; } = string.Empty;
@@ -577,7 +577,7 @@ public sealed record LiberacionDetalleItem
     public decimal QtyOrdered { get; init; }
     public string Cliente { get; init; } = string.Empty;
     public string Vin { get; init; } = string.Empty;
-    public string Hoja { get; init; } = string.Empty;   
+    public string Hoja { get; init; } = string.Empty;
 }
 public sealed record LiberacionSemanasResponse(
     bool Ok,
@@ -594,7 +594,7 @@ public sealed record LoteResumenItem
     public int LoteId { get; init; }
     public string LiberadoPor { get; init; } = string.Empty;
     public string? LiberadoEn { get; init; }
-    public string Cliente { get; init; } = string.Empty;   
+    public string Cliente { get; init; } = string.Empty;
     public int TotalSemanas { get; init; }
     public int Pendientes { get; init; }
     public string Estatus { get; init; } = string.Empty;
@@ -996,16 +996,38 @@ public sealed record FechaCorteDerivadaResponse(
     string Mensaje
 );
 
-/// <summary>Un VIN expeditado detectado.</summary>
+/// <summary>
+/// Un VIN que requiere atención, detectado por Kit_vin_expeditados_detectar.
+/// Motivos: FUERA_MACRO (llegó tarde) · RE_REPEDIDO (re-pedido) ·
+/// SIN_WKNAME (sin semana, no entra a ninguna macro).
+/// </summary>
 public sealed record ExpeditadoItem
 {
     public int Id { get; init; }
     public string Vin { get; init; } = string.Empty;
-    public string WknameOrigen { get; init; } = string.Empty;
+
+    /// <summary>
+    /// NULL cuando el motivo es SIN_WKNAME: ese VIN no tiene semana asignada.
+    /// El front lo usa para deshabilitar Mover — el destino EXP se deriva de la
+    /// semana origen, así que sin ella no se puede armar.
+    /// </summary>
+    public string? WknameOrigen { get; init; }
+
     public string? Tipo { get; init; }
     public string? DueDate { get; init; }
     public string? DetectadoEn { get; init; }
     public string Resolucion { get; init; } = string.Empty;
+
+    // ── Detector v2 (8/2026) ────────────────────────────────────────────────
+
+    /// <summary>FUERA_MACRO · RE_REPEDIDO · SIN_WKNAME</summary>
+    public string? MotivoDeteccion { get; init; }
+
+    /// <summary>Días transcurridos desde el due_date. NULL si no está vencido.</summary>
+    public int? DiasVencido { get; init; }
+
+    /// <summary>Días que lleva sin resolverse desde que se detectó.</summary>
+    public int? DiasPendiente { get; init; }
 }
 
 /// <summary>GET /api/expeditados</summary>

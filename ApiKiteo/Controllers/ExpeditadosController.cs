@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Requests;
 using ApiKiteo.API.Services.Interfaces;
@@ -7,8 +6,15 @@ using ApiKiteo.API.Services.Interfaces;
 namespace ApiKiteo.API.Controllers;
 
 /// <summary>
-/// Expeditados — VINs que llegan a DevTest DESPUÉS de que la macro de su semana
-/// ya se generó. Sin esto, nadie se entera y el bus se queda sin kit.
+/// Expeditados — VINs que requieren atención antes de que el bus se quede sin kit.
+///
+/// El detector marca tres motivos:
+///   · FUERA_MACRO  llegó después de que la macro de su semana ya se generó
+///   · RE_REPEDIDO  re-pedido de una pieza perdida (motherharness %REBB)
+///   · SIN_WKNAME   no recibió semana: no entra a NINGUNA macro y no aparece en
+///                  ninguna pantalla. Es el más grave y no se puede mover a EXP
+///                  (el destino se deriva de la semana origen) — hay que
+///                  asignarle wkname primero.
 ///
 /// Flujo:
 ///   1. El Loader corre y reporta cuántos detectó
@@ -34,12 +40,17 @@ public sealed class ExpeditadosController : KiteoBaseController
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    // OJO: esto corre el detector completo (solo_reportar=1, no escribe). Si el
+    // front lo llama seguido, vale separar un endpoint que solo lea la tabla.
     public async Task<IActionResult> Listar(CancellationToken ct)
         => FromResult(await _service.DetectarAsync(soloReportar: true, ct));
 
     /// <summary>
     /// Corre el detector y registra los nuevos como PENDIENTE.
-    /// Idempotente — el UNIQUE (vin, wkname_origen) evita duplicados.
+    /// Idempotente por VIN mientras siga PENDIENTE (índice filtrado
+    /// UQ_exp_vin_pendiente). Una reincidencia posterior a MOVIDO/IGNORADO sí se
+    /// inserta de nuevo: el wkname se reescribe en cada carga, así que el mismo
+    /// VIN reaparece con nombre distinto y hay motherharness que van en RE15BB.
     /// </summary>
     [HttpPost("detectar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -48,8 +59,12 @@ public sealed class ExpeditadosController : KiteoBaseController
 
     /// <summary>
     /// Mueve los VINs seleccionados a su propia semana EXP.
-    /// Todos deben ser de la MISMA semana origen (mismo tipo) → si no, 400 MIXTO.
-    /// Si el snapshot cambió desde la detección → 409 SNAPSHOT_CAMBIO.
+    ///   400 MIXTO            distintas semanas origen (⇒ distinto tipo)
+    ///   400 SIN_ORIGEN       algún VIN sin semana (SIN_WKNAME): no se puede derivar el tipo
+    ///   400 ORIGEN_INVALIDO  el wkname origen no tiene formato wkNN_cant_tipo
+    ///   409 SNAPSHOT_CAMBIO  el wkname se reescribió desde la detección
+    ///   409 YA_EXISTE        el wkname destino ya existe
+    ///   409 NADA_MOVIDO      el UPDATE no afectó filas (cinturón del anterior)
     /// </summary>
     [HttpPost("mover")]
     [ProducesResponseType(StatusCodes.Status200OK)]
