@@ -179,7 +179,8 @@ public sealed class VersionGuardMiddleware
         // Se registra la version para que el servidor sepa que hay una nueva
         // publicada, sin que nadie tenga que decirselo. Va DESPUES del 426: una
         // version rechazada no promueve nada.
-        cat.ObservarCliente(v, ctx.Request.Headers[HeaderBuild] == "release");
+        cat.ObservarCliente(v, ctx.Request.Headers[HeaderBuild] == "release",
+            $"{Corto(ctx, HeaderEstacion)}/{Corto(ctx, HeaderUsuario)}");
 
         // Al corriente para trabajar pero hay una mas nueva: se avisa por
         // header en CADA respuesta. El cliente decide si lo enseña; la API no

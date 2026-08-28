@@ -96,12 +96,33 @@ public sealed class CatalogoVersiones : BackgroundService
     /// y si contaran, `reco` se iria a 9999 y TODAS las estaciones verian el
     /// aviso de actualizar para siempre, sin forma de quitarlo.
     /// </summary>
-    public void ObservarCliente(Version? v, bool esRelease)
+    public void ObservarCliente(Version? v, bool esRelease, string quien = "?")
     {
         if (v is null || !esRelease) return;
+
+        // Revision 0 NO se promueve. En este proyecto ApplicationVersion es
+        // `1.0.0.*` y toda publicacion real lleva revision (49, 50, ...); un
+        // 1.0.0.0 solo sale del csproj cuando NO pudo determinar la revision
+        // —ni $(ApplicationRevision) ni el .pubxml—, o sea que es un binario
+        // que no deberia estar en piso.
+        //
+        // Promoverlo hizo justo lo que no debia: dejo version_reco en 1.0.0.0.
+        // Inofensivo hoy, pero el dia que se suba version_minima esa estacion
+        // se bloquea sola, porque 1.0.0.0 esta por debajo de cualquier minimo.
+        if (v.Revision == 0)
+        {
+            _logRev0.TryAdd(quien, 0);
+            return;
+        }
+
         lock (_candado)
             if (_vistaMasAlta is null || v > _vistaMasAlta) _vistaMasAlta = v;
     }
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _logRev0 = new();
+
+    /// <summary>Estaciones que reportaron una version sin revision (1.0.0.0).</summary>
+    public IReadOnlyCollection<string> ReportanSinRevision => _logRev0.Keys.ToList();
 
     /// <summary>
     /// Para el diagnostico: ¿el guard esta protegiendo ALGO?
