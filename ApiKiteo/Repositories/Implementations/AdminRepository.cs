@@ -138,8 +138,24 @@ public sealed class AdminRepository : IAdminRepository
         string wkname, CancellationToken ct = default)
     {
         // ── Parsear wkname en C# ──────────────────────────────────────────────
-        // Formato: wk21_142_CEA | wk20_111_ZC/ZD
-        var partes = wkname.Split('_');
+        // Formato: wk21_142_CEA | wk20_111_ZC/ZD | wk36_1_Body_RE1
+        //
+        // MF 31/8/2026 — se parsea sobre la BASE, no sobre el wkname crudo.
+        // Antes esto era wkname.Split('_') directo, y con las semanas de
+        // reordenados el tipo salía mal:
+        //   wk36_1_Body_RE1    → typeRaw "Body_RE1"  (un tipo que no existe,
+        //                        y así se guardaba en Kit_vin_wks_status_cache)
+        //   wk20_111_ZC/ZD_RE1 → tipos ["ZC", "ZD_RE1"], y el filtro
+        //                        vinDesc LIKE 'BodyCVZD_RE1\_%' no empata con
+        //                        nada → Porc y kits en 0, en silencio.
+        //
+        // OJO: solo el TIPO se deriva de la base. Las queries de abajo y la
+        // fila del cache siguen usando el wkname COMPLETO — la semana _RE1 es
+        // una semana propia, con su macro y su escaneo aparte, y tiene que
+        // seguir contando por separado de su base.
+        var wknameBase = WknameParser.Base(wkname);
+
+        var partes = wknameBase.Split('_');
         if (partes.Length < 3) return;
 
         var wk = partes[0];
