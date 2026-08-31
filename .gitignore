@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /ApiKiteo/appsettings.Development.json
+/ApiKiteo/ApiKiteo.zip
