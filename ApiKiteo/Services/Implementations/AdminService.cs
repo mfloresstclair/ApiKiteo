@@ -235,9 +235,36 @@ public sealed class AdminService : IAdminService
                 "CrearDb completado | wkname={Wk} → {Ef} | vins={V} lineas={L}",
                 wkname, wknameEfectivo, totalVins, totalLineas);
 
-            // Cache fire-and-forget — inicializa el status board para esta semana nueva
-            _ = Task.Run(() =>
-                _wksRepo.RefreshStatusCacheAsync(wknameEfectivo, CancellationToken.None));
+            // Cache fire-and-forget — inicializa el status board para esta semana nueva.
+            //
+            // MF 1/9/2026 — era el UNICO de los cinco Task.Run del API sin try/catch:
+            // su excepcion se perdia en la Task descartada y el status board quedaba
+            // sin inicializar sin que nadie se enterara. Los otros cuatro
+            // (DescaneoService:111, EscaneoService:104/194/250) ya logueaban.
+            //
+            // POR QUE NO SE MIGRO A IServiceScopeFactory. Capturar _wksRepo —que es
+            // Scoped— en una tarea que sobrevive al request PARECE un uso despues del
+            // dispose, pero no lo es: WksRepository no implementa IDisposable, asi que
+            // el contenedor no lo toca al cerrar el scope, y DbConnectionFactory
+            // (Singleton) entrega una SqlConnection nueva en cada llamada dentro de un
+            // `using`. Funciona.
+            //
+            // OJO: funciona POR ESO. Si algun dia WksRepository implementa IDisposable
+            // —por ejemplo para poolear una conexion— estos cinco Task.Run se rompen
+            // EN SILENCIO. Si eso pasa, la salida es IServiceScopeFactory, como hace
+            // LoaderController en el loader.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _wksRepo.RefreshStatusCacheAsync(wknameEfectivo, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "RefreshStatusCache fallo (crea_db) | wkname={W}", wknameEfectivo);
+                }
+            });
 
             return ServiceResult<CrearDbResponse>.Ok(
                 new CrearDbResponse(

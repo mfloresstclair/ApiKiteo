@@ -298,7 +298,4 @@ public interface IExpeditadosService
 
     Task<ServiceResult<ExpeditadosIgnorarResponse>> IgnorarAsync(
         ExpeditadosIgnorarRequest request, CancellationToken ct = default);
-
-    Task<ServiceResult<ComunizacionValidarResponse>> ValidarComunizacionAsync(
-        int semana, int anio, DateOnly fechacorte, CancellationToken ct = default);
 }

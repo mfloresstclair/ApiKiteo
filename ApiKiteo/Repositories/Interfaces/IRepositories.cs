@@ -479,8 +479,4 @@ public interface IExpeditadosRepository
     /// <summary>Ejecuta Kit_vin_expeditados_ignorar.</summary>
     Task<IEnumerable<dynamic>> IgnorarAsync(
         string ids, string username, string? motivo, CancellationToken ct = default);
-
-    /// <summary>Ejecuta kit_vin_validar_comunizacion.</summary>
-    Task<IEnumerable<dynamic>> ValidarComunizacionAsync(
-        string semana, DateOnly fechacorte, CancellationToken ct = default);
 }

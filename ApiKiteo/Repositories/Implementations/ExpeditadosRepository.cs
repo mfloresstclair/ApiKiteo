@@ -1,5 +1,4 @@
-﻿
-using System.Data;
+﻿using System.Data;
 using Dapper;
 using Microsoft.Extensions.Options;
 using ApiKiteo.API.Configuration;
@@ -68,16 +67,5 @@ public sealed class ExpeditadosRepository : IExpeditadosRepository
             new { ids, username, motivo },
             commandType: CommandType.StoredProcedure,
             commandTimeout: 30, cancellationToken: ct));
-    }
-
-    public async Task<IEnumerable<dynamic>> ValidarComunizacionAsync(
-        string semana, DateOnly fechacorte, CancellationToken ct = default)
-    {
-        using var conn = _db.CreateConnection();
-        return await conn.QueryAsync(new CommandDefinition(
-            _sp.ValidarComunizacion,
-            new { semana, fechacorte = fechacorte.ToDateTime(TimeOnly.MinValue) },
-            commandType: CommandType.StoredProcedure,
-            commandTimeout: 120, cancellationToken: ct));
     }
 }

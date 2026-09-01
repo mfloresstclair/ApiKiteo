@@ -1062,20 +1062,3 @@ public sealed record ExpeditadosIgnorarResponse(
     string Mensaje,
     int Afectados
 );
-
-/// <summary>Un harness que la semana pide pero no está comunizado.</summary>
-public sealed record ComunizacionGapItem
-{
-    public string Harness { get; init; } = string.Empty;
-    public int CircuitosCorte { get; init; }
-    public int VinsAfectados { get; init; }
-    public string? ComunizadoDespues { get; init; }  // fecha > fechacorte, o null
-}
-
-/// <summary>GET /api/comunizacion/validar</summary>
-public sealed record ComunizacionValidarResponse(
-    bool Ok,
-    int Total,
-    string Mensaje,
-    IReadOnlyList<ComunizacionGapItem> Gaps
-);
