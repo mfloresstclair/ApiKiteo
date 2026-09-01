@@ -116,6 +116,21 @@ public sealed class AdminRepository : IAdminRepository
 
         // SQL inline justificado: query de solo lectura sin lógica de negocio.
         // No existe SP para esta operación — query 100% parameterizado.
+        //
+        // MF 1/9/2026 — filtro de fecha. Sin él, la consulta devolvía UNA FILA POR
+        // CARGA: Vines guarda un renglón por VIN por lunes de producción, así que
+        // wk36_1_Body_RE1 (1 VIN, dos cargas) salía como "2 VINs" y wk36_30_Body
+        // habría salido como 120. El preview mostraba cargas, no VINs.
+        //
+        // DISTINCT no sirve aquí: las filas NO son idénticas. Medido sobre
+        // 2665979-BODYRE, HORASTOT viene 15.928 en una carga y 15.928000000000003
+        // en la otra — artefacto de float. DISTINCT las dejaría pasar las dos y
+        // parecería que el arreglo no hizo nada.
+        //
+        // MAX(fecha) es lo que lee el generador: kit_vin_crea_db usa
+        // "WHERE v.fecha = @bldwkdate AND v.wkname = @wkname", y @bldwkdate es el
+        // lunes de producción — que para una semana viva es justamente el máximo.
+        // Un preview que no filtra enseña filas que la generación nunca va a leer.
         const string sql = """
             SELECT
                 VIN,
@@ -129,6 +144,8 @@ public sealed class AdminRepository : IAdminRepository
                 ISNULL(HORASTOT, 0)         AS horas
             FROM dbo.Vines WITH (NOLOCK)
             WHERE wkname = @wkname
+              AND fecha = (SELECT MAX(fecha) FROM dbo.Vines WITH (NOLOCK)
+                           WHERE wkname = @wkname)
             ORDER BY GRUPO, VIN
             """;
 
