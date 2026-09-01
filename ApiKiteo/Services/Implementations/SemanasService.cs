@@ -30,11 +30,17 @@ public sealed class SemanasService : ISemanasService
                 "GetSemanas | cliente={Cliente} tipo={Tipo} resultados={Count}",
                 cliente, tipo, list.Count);
 
-            if (list.Count == 0)
-                return ServiceResult<IReadOnlyList<SemanaItem>>.Fail(
-                    401,
-                    "No hay semanas cargadas para este cliente y tipo seleccionado.",
-                    ErrorCodes.Kiteo400);
+            // MF 1/9/2026 — antes esto devolvia HTTP 401 (con codigo Kiteo400, que
+            // ya no cuadraba entre si) cuando simplemente no habia semanas.
+            //
+            // Una lista vacia no es un fallo de autenticacion: es una lista vacia.
+            // Y del lado del cliente el 401 hacia que GetStringAsync lanzara
+            // HttpRequestException, que cae en el catch de "Error de conexion" — o
+            // sea que al operador se le mostraba un problema de red por un
+            // resultado normal. Un cliente que ademas trate 401 como sesion
+            // expirada lo desloguearia.
+            //
+            // Ahora se devuelve 200 con la lista vacia y el consumidor decide.
 
             var result = list.Select(r =>
             {
