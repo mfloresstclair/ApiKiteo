@@ -22,34 +22,83 @@ public sealed class AdminService : IAdminService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Lee el trío http_status / message / code de la primera fila que devuelve
+    /// un SP. MF 31/8/2026 — B6.
+    ///
+    /// Una sola lectura para toda la clase: antes AprobarSemanaAsync y
+    /// PreviewSemanaAsync la hacían distinto y con políticas OPUESTAS ante lo
+    /// mismo — Aprobar caía en éxito si el status no parseaba, Preview lo
+    /// tomaba como 500.
+    ///
+    /// FALLA CERRADO a propósito: si falta la columna o el valor no es un
+    /// entero, devuelve 500. Un SP que no dice cómo le fue no es un SP al que
+    /// le fue bien.
+    ///
+    /// No es el helper DesdeSp de ListasService (que además enmascara los 5xx):
+    /// esa unificación es más ancha y se dejó para cuando se toque el punto
+    /// transversal en las tres capas.
+    /// </summary>
+    private static (int Status, string? Mensaje, string? Codigo) LeerEstadoSp(
+        IDictionary<string, object?> fila)
+    {
+        // GetInt/GetStr y no GetValueOrDefault: los helpers de la casa buscan la
+        // clave sin importar el casing, que es justo para lo que existe
+        // DictionaryExtensions ("SQL Server es case-insensitive, pero
+        // IDictionary en C# no lo es por defecto"). El código anterior usaba
+        // GetValueOrDefault, o sea la variante que cae en esa trampa.
+        int status = fila.GetInt("http_status")
+                  ?? fila.GetInt("httpStatus")
+                  ?? 500;                       // ausente o no parseable -> cerrado
+
+        var mensaje = fila.GetStr("message") ?? fila.GetStr("mensaje");
+        var codigo = fila.GetStr("code") ?? fila.GetStr("codigo");
+
+        return (status, mensaje, codigo);
+    }
+
     public async Task<ServiceResult<AprobarSemanaResponse>> AprobarSemanaAsync(
         AprobarSemanaRequest request, CancellationToken ct = default)
     {
         try
         {
             var rows = await _repo.AprobarSemanaAsync(request.Wkname, request.AprobadoPor, ct);
-            var list = rows.ToList();
+            var list = rows.Select(r => (IDictionary<string, object?>)r).ToList();
 
-            if (list.Count > 0)
+            // MF 31/8/2026 — B6: esto FALLABA ABIERTO por tres caminos distintos.
+            // Sin filas, sin columna http_status, o con un http_status que no
+            // parsea: los tres se saltaban la validación y caían al Ok() de
+            // abajo, que además devolvía el literal "Semana aprobada" inventado
+            // en C#. La pantalla reportaba éxito sin que nadie lo hubiera
+            // confirmado.
+            //
+            // No era descuido: AdminRepository lo documentaba como contrato
+            // ("Puede devolver rowset ... O nada (éxito silencioso)"). Pero ese
+            // contrato ya no corresponde al SP. Kit_vin_wk_approve devuelve
+            // rowset con http_status en SUS SEIS ramas — 400 WKNAME_REQUERIDO,
+            // 400 APROBADOR_REQUERIDO, 404 WK_NOT_FOUND, 400 WK_NOT_PENDING
+            // (x2), 200 OK y el 500 del CATCH. Si algún día no responde, eso ya
+            // no es éxito: es que algo cambió, y decirle "aprobada" al usuario
+            // es mentirle. Ahora se falla cerrado, igual que PreviewSemanaAsync.
+            if (list.Count == 0)
             {
-                var d = (IDictionary<string, object?>)list[0];
-
-                var rawStatus = d.GetValueOrDefault("http_status")
-                             ?? d.GetValueOrDefault("httpStatus");
-
-                if (rawStatus is not null && int.TryParse(rawStatus.ToString(), out var httpStatus))
-                {
-                    if (httpStatus != 200)
-                    {
-                        var msg = d.GetStr("message") ?? "Error al aprobar la semana.";
-                        var code = d.GetStr("code") ?? ErrorCodes.Admin500;
-                        return ServiceResult<AprobarSemanaResponse>.Fail(httpStatus, msg, code);
-                    }
-                }
+                _logger.LogError(
+                    "AprobarSemana | el SP no devolvió filas | wk={Wk}", request.Wkname);
+                return ServiceResult<AprobarSemanaResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Admin500);
             }
 
+            var (httpStatus, mensaje, codigo) = LeerEstadoSp(list[0]);
+
+            if (httpStatus != 200)
+                return ServiceResult<AprobarSemanaResponse>.Fail(
+                    httpStatus, mensaje ?? "Error al aprobar la semana.",
+                    codigo ?? ErrorCodes.Admin500);
+
+            // El mensaje sale del SP, no de un literal: si mañana dice otra cosa
+            // —o agrega el estatus al que quedó— el usuario lo ve.
             return ServiceResult<AprobarSemanaResponse>.Ok(
-                new AprobarSemanaResponse(true, "Semana aprobada"));
+                new AprobarSemanaResponse(true, mensaje ?? "Semana aprobada."));
         }
         catch (Exception ex)
         {
@@ -77,17 +126,21 @@ public sealed class AdminService : IAdminService
                     500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
 
             var primera = resumenList[0];
-            if (primera.ContainsKey("http_status"))
+
+            // MF 31/8/2026 — B6: misma lectura que AprobarSemanaAsync, vía
+            // LeerEstadoSp. Aquí la convención es distinta a propósito y se
+            // conserva: el preview devuelve los DATOS cuando todo va bien, así
+            // que la mera presencia de http_status ya significa error.
+            // Lo que se unifica es CÓMO se leen status/message/code, para que las
+            // dos rutas de la clase no diverjan otra vez.
+            if (primera.ContainsKey("http_status") || primera.ContainsKey("httpStatus"))
             {
-                if (!int.TryParse(primera["http_status"]?.ToString(), out var httpStatus))
-                    httpStatus = 500;
+                var (httpStatus, mensaje, codigo) = LeerEstadoSp(primera);
 
-                var mensaje = primera.GetValueOrDefault("message")?.ToString()
-                              ?? "Error al procesar la solicitud.";
-                var codigo = primera.GetValueOrDefault("code")?.ToString()
-                              ?? ErrorCodes.Kiteo500;
-
-                return ServiceResult<WkPreviewResponse>.Fail(httpStatus, mensaje, codigo);
+                return ServiceResult<WkPreviewResponse>.Fail(
+                    httpStatus,
+                    mensaje ?? "Error al procesar la solicitud.",
+                    codigo ?? ErrorCodes.Kiteo500);
             }
 
             var resumen = new WkPreviewResumen
