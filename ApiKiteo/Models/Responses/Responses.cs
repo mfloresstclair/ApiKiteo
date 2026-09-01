@@ -36,6 +36,17 @@ public sealed record SemanaPendienteItem
     public string? Estatus { get; init; }   // "PendienteCorte" | "Pendiente" | "APROBADA"
     public string? AprobadoPor { get; init; }   // null si está pendiente
     public string? CreadoPor { get; init; }     // null hasta que kit_vin_crea_db corre
+
+    /// <summary>
+    /// Fecha de corte del header, "yyyy-MM-dd" o null si Corte no la ha
+    /// capturado (típico en PendienteCorte).
+    ///
+    /// MF 1/9/2026 — antes no existía y por eso la columna FechaCorte del grid
+    /// de SemanasForm salía siempre vacía: el dato vive en Kit_vin_wk_header y
+    /// lo usan crea_db y Kit_vin_corte_ingresar, pero Kit_vin_wk_pend no lo
+    /// seleccionaba, así que nunca subía. Requiere el ALTER del SP.
+    /// </summary>
+    public string? FechaCorte { get; init; }
 }
 
 // ─── Empleados ────────────────────────────────────────────────────────────────

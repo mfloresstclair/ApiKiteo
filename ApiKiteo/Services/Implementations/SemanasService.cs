@@ -80,7 +80,15 @@ public sealed class SemanasService : ISemanasService
                     Estatus = d.GetValueOrDefault("estatus")?.ToString(),
                     AprobadoPor = d.GetValueOrDefault("aprobado_por")?.ToString(),
                     // filtro=3 devuelve creado_por; filtros 0-2 devuelven null
-                    CreadoPor = d.GetValueOrDefault("creado_por")?.ToString()
+                    CreadoPor = d.GetValueOrDefault("creado_por")?.ToString(),
+
+                    // MF 1/9/2026 — formato explícito: la columna es date en SQL
+                    // y un .ToString() a secas daría "8/31/2026 12:00:00 AM"
+                    // según la cultura del servidor. Mismo patrón que
+                    // ExpeditadosService usa para comunizado_despues.
+                    FechaCorte = d.GetValueOrDefault("fechacorte") is DateTime fc
+                                 ? fc.ToString("yyyy-MM-dd")
+                                 : null
                 })
                 .ToList();
 
