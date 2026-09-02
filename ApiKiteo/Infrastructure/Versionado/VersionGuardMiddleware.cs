@@ -53,7 +53,7 @@ public sealed class VersionGuardMiddleware
     public VersionGuardMiddleware(RequestDelegate next, ILogger<VersionGuardMiddleware> log)
     {
         _next = next;
-        _log = log;
+        _log  = log;
     }
 
     /// <summary>
@@ -138,7 +138,7 @@ public sealed class VersionGuardMiddleware
         }
 
         var pol = cat.Cliente;
-        var v = CatalogoVersiones.Leer(version);
+        var v   = CatalogoVersiones.Leer(version);
 
         // Version ilegible: se registra y se deja pasar. Bloquear por no saber
         // parsear un header seria el guard causando la falla.
@@ -169,9 +169,9 @@ public sealed class VersionGuardMiddleware
                 ErrorCodes.Kiteo426,
                 new
                 {
-                    versionActual = v.ToString(),
-                    versionMinima = pol.Minima.ToString(),
-                    rutaInstalador = pol.RutaInstalador
+                    versionActual   = v.ToString(),
+                    versionMinima   = pol.Minima.ToString(),
+                    rutaInstalador  = pol.RutaInstalador
                 });
             return;
         }
@@ -215,7 +215,7 @@ public sealed class VersionGuardMiddleware
         // el 500 resultante taparia el motivo real.
         if (ctx.Response.HasStarted) return;
 
-        ctx.Response.StatusCode = status;
+        ctx.Response.StatusCode  = status;
         ctx.Response.ContentType = "application/json; charset=utf-8";
 
         // Misma forma que ErrorResponse — { exito, mensaje, codigo } — para que

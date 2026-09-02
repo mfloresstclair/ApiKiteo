@@ -28,7 +28,7 @@ public sealed class VersionController : ControllerBase
 
         return Ok(new
         {
-            ok = true,
+            ok  = true,
             api = new
             {
                 version = typeof(VersionController).Assembly.GetName().Version?.ToString(3)
@@ -37,15 +37,15 @@ public sealed class VersionController : ControllerBase
             },
             sql = new
             {
-                esquemaActual = _cat.EsquemaActual,      // -1 = todavia no se lee
+                esquemaActual    = _cat.EsquemaActual,      // -1 = todavia no se lee
                 esquemaRequerido = CatalogoVersiones.EsquemaRequerido,
-                atrasado = _cat.EsquemaAtrasado
+                atrasado         = _cat.EsquemaAtrasado
             },
             cliente = new
             {
-                minima = pol.Minima?.ToString(),    // null = guard inerte
-                recomendada = pol.Reco?.ToString(),
-                mensaje = pol.Mensaje,
+                minima         = pol.Minima?.ToString(),    // null = guard inerte
+                recomendada    = pol.Reco?.ToString(),
+                mensaje        = pol.Mensaje,
                 rutaInstalador = pol.RutaInstalador
             },
             // false = todavia no hubo una lectura buena de kit_app_version.
