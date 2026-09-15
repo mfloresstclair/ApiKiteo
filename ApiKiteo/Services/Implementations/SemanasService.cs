@@ -2,6 +2,7 @@ using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Responses;
 using ApiKiteo.API.Repositories.Interfaces;
 using ApiKiteo.API.Services.Interfaces;
+using System.Globalization;
 
 namespace ApiKiteo.API.Services.Implementations;
 
@@ -88,13 +89,23 @@ public sealed class SemanasService : ISemanasService
                     // filtro=3 devuelve creado_por; filtros 0-2 devuelven null
                     CreadoPor = d.GetValueOrDefault("creado_por")?.ToString(),
 
-                    // MF 1/9/2026 — formato explícito: la columna es date en SQL
-                    // y un .ToString() a secas daría "8/31/2026 12:00:00 AM"
-                    // según la cultura del servidor. Mismo patrón que
-                    // ExpeditadosService usa para comunizado_despues.
-                    FechaCorte = d.GetValueOrDefault("fechacorte") is DateTime fc
-                                 ? fc.ToString("yyyy-MM-dd")
-                                 : null
+                    // DESPUÉS
+                    // MF 1/9/2026 — formato explícito: mismo patrón que ExpeditadosService
+                    // usa para comunizado_despues.
+                    // MF 14/9/2026 — fechacorte es varchar(20) en Kit_vin_wk_header, NO date.
+                    // El "is DateTime" nunca empataba y la columna salía siempre null aunque
+                    // el SP ya la traía. Se acepta string o DateTime y se normaliza a
+                    // yyyy-MM-dd; un texto que no parsea se pasa crudo — mejor un valor raro
+                    // a la vista que ninguno.
+                    FechaCorte = d.GetValueOrDefault("fechacorte") switch
+                    {
+                        DateTime fc => fc.ToString("yyyy-MM-dd"),
+                        string s when DateTime.TryParse(s, CultureInfo.InvariantCulture,
+                                                        DateTimeStyles.None, out var p)
+                                    => p.ToString("yyyy-MM-dd"),
+                        string s when !string.IsNullOrWhiteSpace(s) => s.Trim(),
+                        _ => null
+                    }
                 })
                 .ToList();
 
