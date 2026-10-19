@@ -15,35 +15,43 @@ public sealed class WksRepository : IWksRepository
     private readonly StoredProceduresOptions _sp;
     private readonly ILogger<WksRepository> _logger;
     private readonly int _semanasRetener;
-    private readonly int _horasCompletadas;
+    // MF 19/10/2026 — se quito _horasCompletadas: la condicion que lo usaba ya
+    // no existe (ver SqlCleanup). La clave CacheSettings:HorasCompletadas puede
+    // quedarse en appsettings sin efecto, o borrarse; no la lee nadie mas.
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MF 19/10/2026 — LA REGLA DE LIMPIEZA, UNA SOLA VEZ.
+    // MF 19/10/2026 — LA REGLA DE LIMPIEZA, UNA SOLA VEZ, Y MAS CORTA.
     //
     // Estaba escrita dos veces (el auto-cleanup de RefreshStatusCacheAsync y
     // CacheCleanupAsync) y las dos tenian el mismo defecto. Una regla copiada
-    // en dos lugares es dos bugs esperando turno; en este sistema ya cobro
-    // varias veces. Si se cambia, se cambia aqui.
+    // en dos lugares es dos bugs esperando turno. Si se cambia, se cambia aqui.
     //
-    // EL FIX: la condicion  Porc >= 100.
-    //   KitsCompTot cuenta kits de RACK (Locacion <> 0) y Porc cuenta TODO,
-    //   incluido mandar-a-final. Las dos medidas son correctas y distintas a
-    //   proposito — pero sin esta condicion el limpiador usaba una y la
-    //   pantalla mostraba la otra, y borraba semanas que el board seguia
-    //   pintando incompletas.
+    // SE QUITO la purga de semanas terminadas:
+    //     OR (KitsCompTot >= VinCant AND VinCant > 0
+    //         AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
     //
-    //   Casos reales:
+    // POR QUE. Esa condicion borraba el renglon de una semana "terminada" a las
+    // 48 horas, y el board SOLO LEE este cache: sin renglon, la pantalla no
+    // muestra porcentaje. Fue la causa de la mitad de los reportes de las
+    // ultimas tres semanas:
     //     wk42_41_BodyT3   12/10  rack completo, 29 finales,  99.41%  -> borrada
     //     wk43_170_ZA      19/10  rack completo,  3 finales,  99.97%  -> borrada
     //                             (3 circuitos de 11,511; Alejandro la reporto)
+    // y ademas, una semana que llega de verdad al 100% quedaba sin porcentaje
+    // para siempre, que para quien mira la pantalla es el mismo sintoma.
+    //
+    // El motivo original era velocidad. Medido el 19/10: la tabla tiene 41
+    // renglones y 8 KB de datos (144 KB asignados, 112 sin usar). Sin esa
+    // condicion, el regimen proyectado a 8 semanas es de 91 renglones — ni
+    // siquiera pide una extension nueva. La purga no compraba velocidad: lo que
+    // la compra es que el board lea esta tabla en vez de agregar
+    // VinBusiness_DB_macro, y eso no cambia.
+    //
+    // La retencion por antiguedad SI se queda: es el control de tamaño real.
     // ─────────────────────────────────────────────────────────────────────────
     private const string SqlCleanup = """
         DELETE FROM dbo.Kit_vin_wks_status_cache
         WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
-           OR (KitsCompTot >= VinCant
-               AND VinCant > 0
-               AND Porc >= 100
-               AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
         """;
 
     public WksRepository(
@@ -56,7 +64,6 @@ public sealed class WksRepository : IWksRepository
         _sp = sp.Value;
         _logger = logger;
         _semanasRetener = config.GetValue<int>("CacheSettings:SemanasRetener", 8);
-        _horasCompletadas = config.GetValue<int>("CacheSettings:HorasCompletadas", 48);
     }
 
     /// <inheritdoc/>
@@ -212,8 +219,7 @@ public sealed class WksRepository : IWksRepository
         // ── Auto-cleanup ──────────────────────────────────────────────────────
         // MF 19/10/2026 — la sentencia vive en SqlCleanup, arriba. Antes estaba
         // duplicada aqui y en CacheCleanupAsync.
-        await conn.ExecuteAsync(SqlCleanup,
-            new { semanasRetener = _semanasRetener, horasCompletadas = _horasCompletadas });
+        await conn.ExecuteAsync(SqlCleanup, new { semanasRetener = _semanasRetener });
     }
 
     public async Task<int> CacheCleanupAsync(
@@ -225,7 +231,8 @@ public sealed class WksRepository : IWksRepository
         // que este metodo devuelve. La regla no se vuelve a escribir.
         var sql = SqlCleanup + ";\n\nSELECT @@ROWCOUNT;";
 
-        return await conn.ExecuteScalarAsync<int>(
-            sql, new { semanasRetener, horasCompletadas });
+        // horasCompletadas se conserva en la firma —la expone el endpoint
+        // POST /wks/cache/cleanup— pero ya no participa en el DELETE.
+        return await conn.ExecuteScalarAsync<int>(sql, new { semanasRetener });
     }
 }
