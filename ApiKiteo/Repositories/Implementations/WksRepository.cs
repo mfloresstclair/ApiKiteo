@@ -17,6 +17,35 @@ public sealed class WksRepository : IWksRepository
     private readonly int _semanasRetener;
     private readonly int _horasCompletadas;
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // MF 19/10/2026 — LA REGLA DE LIMPIEZA, UNA SOLA VEZ.
+    //
+    // Estaba escrita dos veces (el auto-cleanup de RefreshStatusCacheAsync y
+    // CacheCleanupAsync) y las dos tenian el mismo defecto. Una regla copiada
+    // en dos lugares es dos bugs esperando turno; en este sistema ya cobro
+    // varias veces. Si se cambia, se cambia aqui.
+    //
+    // EL FIX: la condicion  Porc >= 100.
+    //   KitsCompTot cuenta kits de RACK (Locacion <> 0) y Porc cuenta TODO,
+    //   incluido mandar-a-final. Las dos medidas son correctas y distintas a
+    //   proposito — pero sin esta condicion el limpiador usaba una y la
+    //   pantalla mostraba la otra, y borraba semanas que el board seguia
+    //   pintando incompletas.
+    //
+    //   Casos reales:
+    //     wk42_41_BodyT3   12/10  rack completo, 29 finales,  99.41%  -> borrada
+    //     wk43_170_ZA      19/10  rack completo,  3 finales,  99.97%  -> borrada
+    //                             (3 circuitos de 11,511; Alejandro la reporto)
+    // ─────────────────────────────────────────────────────────────────────────
+    private const string SqlCleanup = """
+        DELETE FROM dbo.Kit_vin_wks_status_cache
+        WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
+           OR (KitsCompTot >= VinCant
+               AND VinCant > 0
+               AND Porc >= 100
+               AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
+        """;
+
     public WksRepository(
         IDbConnectionFactory db,
         IOptions<StoredProceduresOptions> sp,
@@ -115,22 +144,41 @@ public sealed class WksRepository : IWksRepository
             var kitsCompTot = kitsComp + kitsCompFinal;
 
             // ── UPSERT ────────────────────────────────────────────────────────
-            const string sqlDelete = """
-                DELETE FROM dbo.Kit_vin_wks_status_cache
-                WHERE wkname = @wkname AND tipo = @tipoTrim
+            // MF 19/10/2026 — antes eran DELETE + INSERT en dos ExecuteAsync
+            // sueltos. Dos escaneos simultaneos sobre la misma semana corrian el
+            // mismo par y uno perdia:
+            //     Violation of PRIMARY KEY constraint 'PK_wks_status_cache'.
+            //     The duplicate key value is (wk33_187_ZC/ZD, ZC).
+            // Visto seis veces en el mismo segundo. El renglon sobrevivia —ganaba
+            // el otro— pero la actualizacion se perdia y el log se llenaba de
+            // errores que tapan los de verdad.
+            //
+            // LOS HINTS NO SON OPCIONALES. UPDLOCK toma el lock de escritura
+            // desde el UPDATE; SERIALIZABLE sostiene el rango de la llave cuando
+            // el renglon NO existe, que es justo la ventana donde las dos tareas
+            // decidian insertar a la vez. Sin ellos esto vuelve a ser la misma
+            // carrera con mas pasos.
+            const string sqlUpsert = """
+                UPDATE dbo.Kit_vin_wks_status_cache WITH (UPDLOCK, SERIALIZABLE)
+                   SET wk            = @wk,
+                       VinCant       = @vinCant,
+                       kitsComp      = @kitsComp,
+                       KitsCompFinal = @kitsCompFinal,
+                       KitsCompTot   = @kitsCompTot,
+                       Porc          = @porc,
+                       updated_at    = GETUTCDATE()
+                 WHERE wkname = @wkname AND tipo = @tipoTrim;
+
+                IF @@ROWCOUNT = 0
+                    INSERT INTO dbo.Kit_vin_wks_status_cache
+                        (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
+                         KitsCompTot, Porc, updated_at)
+                    VALUES
+                        (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
+                         @kitsCompTot, @porc, GETUTCDATE());
                 """;
 
-            const string sqlInsert = """
-                INSERT INTO dbo.Kit_vin_wks_status_cache
-                    (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
-                     KitsCompTot, Porc, updated_at)
-                VALUES
-                    (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
-                     @kitsCompTot, @porc, GETUTCDATE())
-                """;
-
-            await conn.ExecuteAsync(sqlDelete, new { wkname, tipoTrim });
-            await conn.ExecuteAsync(sqlInsert, new
+            await conn.ExecuteAsync(sqlUpsert, new
             {
                 wkname,
                 wk,
@@ -148,15 +196,9 @@ public sealed class WksRepository : IWksRepository
         }
 
         // ── Auto-cleanup ──────────────────────────────────────────────────────
-        const string sqlCleanup = """
-            DELETE FROM dbo.Kit_vin_wks_status_cache
-            WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
-               OR (KitsCompTot >= VinCant
-                   AND VinCant > 0
-                   AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()))
-            """;
-
-        await conn.ExecuteAsync(sqlCleanup,
+        // MF 19/10/2026 — la sentencia vive en SqlCleanup, arriba. Antes estaba
+        // duplicada aqui y en CacheCleanupAsync.
+        await conn.ExecuteAsync(SqlCleanup,
             new { semanasRetener = _semanasRetener, horasCompletadas = _horasCompletadas });
     }
 
@@ -165,15 +207,9 @@ public sealed class WksRepository : IWksRepository
     {
         using var conn = _db.CreateConnection();
 
-        const string sql = """
-            DELETE FROM dbo.Kit_vin_wks_status_cache
-            WHERE updated_at < DATEADD(week, -@semanasRetener, GETUTCDATE())
-               OR (KitsCompTot >= VinCant
-                   AND VinCant > 0
-                   AND updated_at < DATEADD(hour, -@horasCompletadas, GETUTCDATE()));
-
-            SELECT @@ROWCOUNT;
-            """;
+        // MF 19/10/2026 — misma sentencia que el auto-cleanup, mas el ROWCOUNT
+        // que este metodo devuelve. La regla no se vuelve a escribir.
+        var sql = SqlCleanup + ";\n\nSELECT @@ROWCOUNT;";
 
         return await conn.ExecuteScalarAsync<int>(
             sql, new { semanasRetener, horasCompletadas });
