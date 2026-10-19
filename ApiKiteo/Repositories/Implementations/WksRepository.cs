@@ -153,29 +153,43 @@ public sealed class WksRepository : IWksRepository
             // el otro— pero la actualizacion se perdia y el log se llenaba de
             // errores que tapan los de verdad.
             //
-            // LOS HINTS NO SON OPCIONALES. UPDLOCK toma el lock de escritura
-            // desde el UPDATE; SERIALIZABLE sostiene el rango de la llave cuando
-            // el renglon NO existe, que es justo la ventana donde las dos tareas
-            // decidian insertar a la vez. Sin ellos esto vuelve a ser la misma
-            // carrera con mas pasos.
+            // LA TRANSACCION EXPLICITA NO ES OPCIONAL, Y LOS HINTS TAMPOCO.
+            // En autocommit cada sentencia es su propia transaccion, asi que el
+            // lock de rango que toma el UPDATE se LIBERA al terminar el UPDATE,
+            // antes de que corra el INSERT — y la carrera queda igual de abierta.
+            // Los hints solo valen dentro de la transaccion que los sostiene:
+            //   UPDLOCK      toma el lock de escritura desde el UPDATE
+            //   SERIALIZABLE sostiene el rango de la llave cuando el renglon NO
+            //                existe, que es la ventana donde las dos tareas
+            //                decidian insertar a la vez
+            // Quitar el BEGIN TRAN, o quitar los hints, reintroduce el bug.
+            //
+            // XACT_ABORT ON: si el INSERT falla por cualquier otra razon, la
+            // transaccion se deshace sola en vez de quedarse abierta en una
+            // tarea fire-and-forget que nadie esta mirando.
             const string sqlUpsert = """
-                UPDATE dbo.Kit_vin_wks_status_cache WITH (UPDLOCK, SERIALIZABLE)
-                   SET wk            = @wk,
-                       VinCant       = @vinCant,
-                       kitsComp      = @kitsComp,
-                       KitsCompFinal = @kitsCompFinal,
-                       KitsCompTot   = @kitsCompTot,
-                       Porc          = @porc,
-                       updated_at    = GETUTCDATE()
-                 WHERE wkname = @wkname AND tipo = @tipoTrim;
+                SET XACT_ABORT ON;
+                BEGIN TRANSACTION;
 
-                IF @@ROWCOUNT = 0
-                    INSERT INTO dbo.Kit_vin_wks_status_cache
-                        (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
-                         KitsCompTot, Porc, updated_at)
-                    VALUES
-                        (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
-                         @kitsCompTot, @porc, GETUTCDATE());
+                    UPDATE dbo.Kit_vin_wks_status_cache WITH (UPDLOCK, SERIALIZABLE)
+                       SET wk            = @wk,
+                           VinCant       = @vinCant,
+                           kitsComp      = @kitsComp,
+                           KitsCompFinal = @kitsCompFinal,
+                           KitsCompTot   = @kitsCompTot,
+                           Porc          = @porc,
+                           updated_at    = GETUTCDATE()
+                     WHERE wkname = @wkname AND tipo = @tipoTrim;
+
+                    IF @@ROWCOUNT = 0
+                        INSERT INTO dbo.Kit_vin_wks_status_cache
+                            (wkname, wk, tipo, VinCant, kitsComp, KitsCompFinal,
+                             KitsCompTot, Porc, updated_at)
+                        VALUES
+                            (@wkname, @wk, @tipoTrim, @vinCant, @kitsComp, @kitsCompFinal,
+                             @kitsCompTot, @porc, GETUTCDATE());
+
+                COMMIT TRANSACTION;
                 """;
 
             await conn.ExecuteAsync(sqlUpsert, new
