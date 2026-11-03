@@ -212,11 +212,18 @@ public sealed class LiberacionService : ILiberacionService
                 {
                     LoteId = Convert.ToInt32(primeraFila.GetValueOrDefault("lote_id") ?? 0),
                     LiberadoPor = primeraFila.GetStr("liberado_por") ?? string.Empty,
-                    LiberadoEn = primeraFila.GetValueOrDefault("liberado_en")?.ToString(),
+                    // 3/11/2026 MF — salia de un .ToString() suelto, que depende
+                    // del locale del servidor. Mismo arreglo que CreadoEn.
+                    LiberadoEn = Fecha(primeraFila, "liberado_en"),
                     Cliente = primeraFila.GetStr("cliente") ?? string.Empty,
                     TotalSemanas = Convert.ToInt32(primeraFila.GetValueOrDefault("total_semanas") ?? 0),
                     Pendientes = Convert.ToInt32(primeraFila.GetValueOrDefault("pendientes") ?? 0),
-                    Estatus = primeraFila.GetStr("estatus") ?? string.Empty
+                    Estatus = primeraFila.GetStr("estatus") ?? string.Empty,
+
+                    DesactualizadoEn     = Fecha(primeraFila, "desactualizado_en"),
+                    DesactualizadoMotivo = primeraFila.GetStr("desactualizado_motivo"),
+                    DesactualizadoPor    = primeraFila.GetStr("desactualizado_por"),
+                    DesactualizadoVeces  = primeraFila.GetInt("desactualizado_veces") ?? 0
                 };
             }
 
@@ -477,8 +484,8 @@ public sealed class LiberacionService : ILiberacionService
             {
                 LoteId        = Convert.ToInt32(primera.GetValueOrDefault("lote_id") ?? 0),
                 LiberadoPor   = primera.GetStr("liberado_por") ?? string.Empty,
-                LiberadoEn    = primera.GetValueOrDefault("liberado_en")?.ToString(),
-                EnviadoEn     = primera.GetValueOrDefault("enviado_en")?.ToString(),
+                LiberadoEn    = Fecha(primera, "liberado_en"),
+                EnviadoEn     = Fecha(primera, "enviado_en"),
                 EnviadoPor    = primera.GetStr("enviado_por"),
                 Destinatarios = primera.GetStr("destinatarios"),
                 WkEtiqueta    = primera.GetStr("wk_etiqueta"),
@@ -486,7 +493,12 @@ public sealed class LiberacionService : ILiberacionService
                 Archivo       = primera.GetStr("archivo"),
                 TotalItems    = Convert.ToInt32(primera.GetValueOrDefault("total_items") ?? 0),
                 Estatus       = primera.GetStr("estatus") ?? string.Empty,
-                TotalSemanas  = Convert.ToInt32(primera.GetValueOrDefault("total_semanas") ?? 0)
+                TotalSemanas  = Convert.ToInt32(primera.GetValueOrDefault("total_semanas") ?? 0),
+
+                DesactualizadoEn     = Fecha(primera, "desactualizado_en"),
+                DesactualizadoMotivo = primera.GetStr("desactualizado_motivo"),
+                DesactualizadoPor    = primera.GetStr("desactualizado_por"),
+                DesactualizadoVeces  = primera.GetInt("desactualizado_veces") ?? 0
             };
 
             var resumen = resumenRows
@@ -538,12 +550,17 @@ public sealed class LiberacionService : ILiberacionService
                     LoteId       = Convert.ToInt32(d.GetValueOrDefault("lote_id") ?? 0),
                     WkEtiqueta   = d.GetStr("wk_etiqueta"),
                     Cliente      = d.GetStr("cliente"),
-                    EnviadoEn    = d.GetValueOrDefault("enviado_en")?.ToString(),
+                    EnviadoEn    = Fecha(d, "enviado_en"),
                     EnviadoPor   = d.GetStr("enviado_por"),
                     TotalItems   = Convert.ToInt32(d.GetValueOrDefault("total_items") ?? 0),
                     Archivo      = d.GetStr("archivo"),
                     Estatus      = d.GetStr("estatus") ?? string.Empty,
-                    TotalSemanas = Convert.ToInt32(d.GetValueOrDefault("total_semanas") ?? 0)
+                    TotalSemanas = Convert.ToInt32(d.GetValueOrDefault("total_semanas") ?? 0),
+
+                    DesactualizadoEn     = Fecha(d, "desactualizado_en"),
+                    DesactualizadoMotivo = d.GetStr("desactualizado_motivo"),
+                    DesactualizadoPor    = d.GetStr("desactualizado_por"),
+                    DesactualizadoVeces  = d.GetInt("desactualizado_veces") ?? 0
                 })
                 .ToList();
 

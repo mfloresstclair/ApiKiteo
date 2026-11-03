@@ -647,6 +647,24 @@ public sealed record LoteResumenItem
     public int TotalSemanas { get; init; }
     public int Pendientes { get; init; }
     public string Estatus { get; init; } = string.Empty;
+
+    // ── 3/11/2026 MF — la bandera de lote desactualizado ─────────────────────
+    //
+    // Se escribe desde el merge desde las 12:39 del 3/11 y hasta ahora nadie la
+    // leia. Pasa a NULL cuando el lote sigue valiendo.
+    //
+    // `DesactualizadoEn` ES la bandera; el bit aparte se desincronizaria.
+
+    /// <summary>Cuando dejo de ser cierto el papel. NULL = sigue valiendo.</summary>
+    public string? DesactualizadoEn { get; init; }
+
+    /// <summary>El PRIMER motivo, el que lo invalido. Los posteriores solo cuentan.</summary>
+    public string? DesactualizadoMotivo { get; init; }
+
+    public string? DesactualizadoPor { get; init; }
+
+    /// <summary>Cuantas veces se toco despues de salir. 0 = ninguna.</summary>
+    public int DesactualizadoVeces { get; init; }
 }
 
 /// <summary>RS2 de Kit_vin_liberacion_get — semanas del lote.</summary>
@@ -735,6 +753,24 @@ public sealed record LiberacionSnapshotCabecera
     public int TotalItems { get; init; }
     public string Estatus { get; init; } = string.Empty;   // Creado | Enviado | Reemplazado
     public int TotalSemanas { get; init; }
+
+    // ── 3/11/2026 MF — la bandera de lote desactualizado ─────────────────────
+    //
+    // Se escribe desde el merge desde las 12:39 del 3/11 y hasta ahora nadie la
+    // leia. Pasa a NULL cuando el lote sigue valiendo.
+    //
+    // `DesactualizadoEn` ES la bandera; el bit aparte se desincronizaria.
+
+    /// <summary>Cuando dejo de ser cierto el papel. NULL = sigue valiendo.</summary>
+    public string? DesactualizadoEn { get; init; }
+
+    /// <summary>El PRIMER motivo, el que lo invalido. Los posteriores solo cuentan.</summary>
+    public string? DesactualizadoMotivo { get; init; }
+
+    public string? DesactualizadoPor { get; init; }
+
+    /// <summary>Cuantas veces se toco despues de salir. 0 = ninguna.</summary>
+    public int DesactualizadoVeces { get; init; }
 }
 
 /// <summary>Semana del lote, tal como quedó al momento del envío.</summary>
@@ -765,6 +801,24 @@ public sealed record LiberacionHistorialItem
     public string? Archivo { get; init; }
     public string Estatus { get; init; } = string.Empty;
     public int TotalSemanas { get; init; }
+
+    // ── 3/11/2026 MF — la bandera de lote desactualizado ─────────────────────
+    //
+    // Se escribe desde el merge desde las 12:39 del 3/11 y hasta ahora nadie la
+    // leia. Pasa a NULL cuando el lote sigue valiendo.
+    //
+    // `DesactualizadoEn` ES la bandera; el bit aparte se desincronizaria.
+
+    /// <summary>Cuando dejo de ser cierto el papel. NULL = sigue valiendo.</summary>
+    public string? DesactualizadoEn { get; init; }
+
+    /// <summary>El PRIMER motivo, el que lo invalido. Los posteriores solo cuentan.</summary>
+    public string? DesactualizadoMotivo { get; init; }
+
+    public string? DesactualizadoPor { get; init; }
+
+    /// <summary>Cuantas veces se toco despues de salir. 0 = ninguna.</summary>
+    public int DesactualizadoVeces { get; init; }
 }
 
 /// <summary>GET /api/liberacion/historial</summary>
