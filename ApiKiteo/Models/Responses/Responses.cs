@@ -567,6 +567,44 @@ public sealed record LiberacionSemanaItem
     public string Estatus { get; init; } = string.Empty;
     public string Cliente { get; init; } = string.Empty;
     public string? CreadoEn { get; init; }
+
+    // ── 3/11/2026 MF — lo que el SP ya devolvia y aqui se estaba tirando ──────
+    //
+    // El selector mostraba semanas YA LIBERADAS mezcladas con las disponibles
+    // y nada las distinguia. Eso es el lote 61: Adriana vio wk46_29_ZA y
+    // wk46_29_ZA_EXP1 una debajo de otra, las dos diciendo 29, y no tenia con
+    // que diferenciarlas. No era un dato que ella debiera recordar.
+
+    /// <summary>Lote al que ya esta ligada la semana. NULL = sigue disponible.</summary>
+    public int? LoteId { get; init; }
+
+    /// <summary>Atajo de LoteId != null, para que el cliente no repita la regla.</summary>
+    public bool Liberada { get; init; }
+
+    /// <summary>
+    /// La ventana pre-crea completa, resuelta en el back:
+    /// PendienteCorte + sin lote + sin fechacorte.
+    /// </summary>
+    public bool EnVentana { get; init; }
+
+    /// <summary>
+    /// Camiones reales de la semana. El numero del NOMBRE es texto y puede
+    /// mentir — ya puso 58 en una semana de 29. Este viene del dato.
+    /// </summary>
+    public int? Camiones { get; init; }
+
+    /// <summary>Filas en Vines. En ZC/ZD es el doble de camiones: un renglon por lado.</summary>
+    public int? Filas { get; init; }
+
+    /// <summary>Si ya paso por Corte. Es varchar(20) en la base, con formatos mezclados.</summary>
+    public string? Fechacorte { get; init; }
+
+    // Tres columnas y no una: una semana PUEDE tener varios due_date
+    // (wk44_1_ZA trae tres). Si el cliente asume uno solo, muestra el primero
+    // que llegue y nadie lo nota hasta que importa.
+    public string? DueDateMin { get; init; }
+    public string? DueDateMax { get; init; }
+    public int? DueDatesDistintos { get; init; }
 }
 
 /// <summary>POST /api/liberacion — resumen (det=0)</summary>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using ApiKiteo.API.Common;
 using ApiKiteo.API.Models.Requests;
@@ -35,7 +36,22 @@ public sealed class LiberacionService : ILiberacionService
                     Wkname = d.GetStr("wkname") ?? string.Empty,
                     Estatus = d.GetStr("estatus") ?? string.Empty,
                     Cliente = d.GetStr("cliente") ?? string.Empty,
-                    CreadoEn = d.GetValueOrDefault("creado_en")?.ToString()
+                    // 3/11/2026 MF — era GetValueOrDefault(...).ToString(), que son
+                    // las dos trampas de la casa en una linea: GetValueOrDefault
+                    // distingue mayusculas (SQL Server no) y ToString() sobre un
+                    // DateTime usa la cultura DEL SERVIDOR.
+                    CreadoEn = Fecha(d, "creado_en"),
+
+                    // ── lo que el SP ya devolvia y aqui se tiraba ───────────────
+                    LoteId = d.GetInt("lote_id"),
+                    Liberada = (d.GetInt("liberada") ?? 0) == 1,
+                    EnVentana = (d.GetInt("en_ventana") ?? 0) == 1,
+                    Camiones = d.GetInt("camiones"),
+                    Filas = d.GetInt("filas"),
+                    Fechacorte = d.GetStr("fechacorte"),
+                    DueDateMin = Fecha(d, "due_date_min"),
+                    DueDateMax = Fecha(d, "due_date_max"),
+                    DueDatesDistintos = d.GetInt("due_dates_distintos")
                 })
                 .ToList();
 
@@ -48,6 +64,27 @@ public sealed class LiberacionService : ILiberacionService
             return ServiceResult<LiberacionSemanasResponse>.Fail(
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }
+    }
+
+    /// <summary>
+    /// ISO 8601 invariante. Mismo helper que ListasService y por el mismo
+    /// motivo: `ToString()` sobre un DateTime usa la cultura DEL SERVIDOR, y en
+    /// un Windows es-MX sale "21/08/2026 11:16:00 p. m." — el cliente delgado
+    /// revienta al parsear eso.
+    /// </summary>
+    private static string? Fecha(IDictionary<string, object?> d, string key)
+    {
+        var raw = d.GetValueOrDefault(key);
+        return raw switch
+        {
+            null => null,
+            DateTime dt => dt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            DateTimeOffset o => o.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            _ => DateTime.TryParse(raw.ToString(), CultureInfo.InvariantCulture,
+                                   DateTimeStyles.None, out var parsed)
+                 ? parsed.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture)
+                 : raw.ToString()
+        };
     }
 
     // ── POST /api/liberacion/crear ────────────────────────────────────────────
