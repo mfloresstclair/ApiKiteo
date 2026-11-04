@@ -142,9 +142,25 @@ builder.Services.AddCors(opts =>
               .AllowAnyHeader()));
 
 // ─── Logging con Serilog ──────────────────────────────────────────────────────
-// Archivo: C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-YYYYMMDD.log
 // Rolling diario, 7 días de retención, auto-borrado.
 // Corriendo como Windows Service no hay consola — los logs quedan en archivo.
+//
+// MF 4/11/2026 — LA RUTA SALE A CONFIGURACION.
+//
+// Estaba literal como C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-.log. En Linux eso
+// no falla: crea un archivo cuyo NOMBRE lleva las diagonales invertidas, y lo
+// deja dentro de /app. Y /app es justo la carpeta que el update.sh del deploy
+// REEMPLAZA en cada despliegue, asi que el historial se borraba ahi — no a los
+// 7 dias del retainedFileCountLimit, sino justo cuando mas falta hace.
+//
+// No se cambia por una ruta de Linux fija porque UseWindowsService() sigue
+// arriba: el binario puede correr como servicio de Windows en otro lado. El
+// valor de hoy queda de respaldo, asi que sin configurar nada se comporta igual
+// que siempre; el contenedor lo apunta fuera de /app con la variable de entorno
+// RutaLog, sin recompilar ni meter un segundo appsettings.
+var rutaLog = builder.Configuration["RutaLog"]
+              ?? @"C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-.log";
+
 Log.Logger = new LoggerConfiguration()
     // Nivel base — captura todo de la API: requests, queries, errores, warnings
     .MinimumLevel.Debug()
@@ -166,7 +182,7 @@ Log.Logger = new LoggerConfiguration()
 
     // Archivo — siempre activo, incluyendo cuando corre como Windows Service
     .WriteTo.File(
-        path: @"C:\APIs\APISMX_Log\ApiKiteo\apiKiteo-.log",
+        path: rutaLog,
         rollingInterval: RollingInterval.Day,    // un archivo por día
         retainedFileCountLimit: 7,                      // auto-borrar logs de más de 7 días
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}")
