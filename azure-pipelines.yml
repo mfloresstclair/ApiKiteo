@@ -57,23 +57,66 @@ stages:
         inputs:
           targetType: 'inline'
           script: |
+            # ─────────────────────────────────────────────────────────────────
+            # MF 4/11/2026 — SE COPIA A UN LADO Y SE INTERCAMBIA.
+            #
+            # La version anterior hacia Remove-Item del destino y DESPUES
+            # Copy-Item. Eso tiene dos agujeros, y el 3/11 se cayeron los dos:
+            #
+            #  1. Este paso era el unico de los tres SIN $ErrorActionPreference
+            #     = "Stop". Un error no terminante del Copy-Item se anotaba y el
+            #     script seguia, imprimia "Publish completed successfully" y la
+            #     etapa salia en verde con el NAS a medias. Asi quedo el 3/11:
+            #     el arbol de carpetas creado y CERO archivos.
+            #  2. Al borrar antes de copiar, cuando el copy falla el artefacto
+            #     bueno anterior ya no existe. No habia a que volver.
+            #
+            # Y como DeployBackup baja el artefacto de Azure DevOps y no del
+            # NAS, el backup pasaba y solo el master fallaba — lo que mandaba a
+            # buscar el problema al lado equivocado.
+            #
+            # Esto copia a <App>.new, VALIDA, y solo entonces intercambia
+            # conservando <App>.old. Es el mismo patron que el update.sh del
+            # otro lado ya usaba con app_new/app_old.
+            # ─────────────────────────────────────────────────────────────────
+            $ErrorActionPreference = "Stop"
+
             $AppName = "ApiKiteo"
             $TargetRoot = "\\stclair.stclairtech.com\nas\Software\SCT Apps"
             $TargetFolder = Join-Path $TargetRoot $AppName
+            $Staging = "$TargetFolder.new"
+            $Previous = "$TargetFolder.old"
+            $MainDll = "ApiKiteo.API.dll"
 
             Write-Host "Target Folder: $TargetFolder"
 
-            if (!(Test-Path $TargetFolder)) {
-                New-Item -ItemType Directory -Path $TargetFolder -Force | Out-Null
-            }
-            if (Test-Path "$TargetFolder\*") {
-                Remove-Item "$TargetFolder\*" -Recurse -Force
-            }
+            # --- staging limpio ---
+            if (Test-Path $Staging) { Remove-Item $Staging -Recurse -Force }
+            New-Item -ItemType Directory -Path $Staging -Force | Out-Null
 
             Copy-Item -Path "$(Build.ArtifactStagingDirectory)\*" `
-                      -Destination $TargetFolder -Recurse -Force
+                      -Destination $Staging -Recurse -Force
 
-            Write-Host "Publish completed successfully."
+            # --- validar ANTES de tocar lo que ya esta publicado ---
+            $copiados = (Get-ChildItem $Staging -Recurse -File).Count
+            Write-Host "Archivos copiados a staging: $copiados"
+
+            if ($copiados -eq 0) {
+                throw "El Copy-Item no dejo NINGUN archivo en $Staging. Lo publicado se conserva intacto."
+            }
+
+            $dll = Get-ChildItem $Staging -Recurse -Filter $MainDll | Select-Object -First 1
+            if (-not $dll) {
+                throw "Se copiaron $copiados archivos pero falta $MainDll. Lo publicado se conserva intacto."
+            }
+            Write-Host "Validado: $($dll.FullName)"
+
+            # --- intercambio, conservando la version anterior ---
+            if (Test-Path $Previous) { Remove-Item $Previous -Recurse -Force }
+            if (Test-Path $TargetFolder) { Move-Item $TargetFolder $Previous -Force }
+            Move-Item $Staging $TargetFolder -Force
+
+            Write-Host "Publish completed successfully. $copiados archivos. Version anterior en $Previous"
 
 # ============================================================
 #  2) DEPLOY BACKUP (local en itdev-pc)
