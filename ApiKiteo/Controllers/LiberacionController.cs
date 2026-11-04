@@ -35,6 +35,7 @@ public sealed class LiberacionController : KiteoBaseController
     public async Task<IActionResult> GetSemanas(
         [FromQuery] string estatus = "PendienteCorte",
         [FromQuery] string cliente = "TODOS",
+        [FromQuery] bool incluirSinCargaActual = false,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(estatus))
@@ -45,7 +46,13 @@ public sealed class LiberacionController : KiteoBaseController
             return BadRequest(ErrorResponse.Create(
                 "El parámetro 'cliente' debe ser TODOS, TBB o BB.", ErrorCodes.Kiteo400));
 
-        return FromResult(await _service.GetSemanasAsync(estatus.Trim(), cliente, ct));
+        // MF 4/11/2026 — incluirSinCargaActual: en false (el default) el
+        // resultado es el de siempre. En true cada semana se mide contra su
+        // ULTIMA carga y las que no tienen ninguna aparecen igual. Hace falta
+        // para ver la papelera: una semana IGNORADA ya no se carga, y sin esto
+        // el filtro de carga de referencia la deja fuera del result set.
+        return FromResult(await _service.GetSemanasAsync(
+            estatus.Trim(), cliente, incluirSinCargaActual, ct));
     }
 
     /// <summary>
@@ -150,6 +157,74 @@ public sealed class LiberacionController : KiteoBaseController
                 "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
 
         return FromResult(await _service.IngresarCorteAsync(request, ct));
+    }
+
+    /// <summary>
+    /// Renombra una semana al nombre que le corresponde por numero de camiones.
+    ///
+    /// El nombre nuevo NO se recibe: lo calcula el SP con la formula del loader.
+    /// confirmar=false devuelve code=SIMULACION con nombre_nuevo y no escribe.
+    ///
+    /// Codigos que el front debe distinguir: SIMULACION, OK, SIN_CAMBIO (200);
+    /// PARAM_INVALIDO (400); NO_EXISTE (404); FUERA_DE_VENTANA, MACRO_ACTIVA,
+    /// SIN_CARGA, NOMBRE_RARO, DESTINO_OCUPADO (409).
+    /// </summary>
+    [HttpPost("wk/renombrar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> WkRenombrar(
+        [FromBody] WkRenombrarRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkRenombrarAsync(request, ct));
+    }
+
+    /// <summary>
+    /// Manda una semana a la papelera (estatus IGNORADA) o la restaura.
+    ///
+    /// Nunca borra y nunca cambia el wkname — por eso no deja Vines huerfanas.
+    /// confirmar=false simula. Si la semana tiene macro generada, la simulacion
+    /// regresa code=TIENE_MACRO con requiere_confirmacion_fuerte=true y http 200:
+    /// es un alto, no un error, y el front tiene que preguntar otra vez.
+    /// </summary>
+    [HttpPost("wk/papelera")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> WkPapelera(
+        [FromBody] WkPapeleraRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        // Se valida aqui ademas del SP: un typo en accion no merece un viaje
+        // a la base, y el mensaje de 400 dice las dos opciones.
+        if (request.Accion is not ("MOVER" or "RESTAURAR"))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'accion' debe ser MOVER o RESTAURAR.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkPapeleraAsync(request, ct));
     }
 
     /// <summary>

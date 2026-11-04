@@ -178,6 +178,40 @@ public sealed record CorteIngresarRequest(
     [Required] int Anio,      // ej. 2026
     [Required] string Username
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/renombrar
+///
+/// NO lleva nombre nuevo, y es a proposito: el numero del wkname es un dato
+/// DERIVADO (camiones distintos de la semana), no un dato de negocio. Si el
+/// front mandara el nombre, cada correccion seria una oportunidad de teclear
+/// otro numero equivocado. El SP lo recalcula con la misma formula del loader.
+///
+/// Confirmar=false → el SP simula y devuelve code=SIMULACION con el nombre que
+/// pondria. Confirmar=true → escribe. El WinForm hace las dos llamadas.
+/// </summary>
+public sealed record WkRenombrarRequest(
+    [Required] string Wkname,
+    [Required] string Username,
+    bool Confirmar = false
+);
+
+/// <summary>
+/// POST /api/liberacion/wk/papelera
+///
+/// Accion = MOVER → estatus IGNORADA | RESTAURAR → estatus PendienteCorte.
+/// Nunca borra y nunca toca el wkname, asi que no deja Vines huerfanas.
+/// Confirmar funciona igual que en renombrar, con una vuelta de mas: si la
+/// semana tiene macro generada, la primera llamada regresa code=TIENE_MACRO
+/// con requiere_confirmacion_fuerte=1 y el WinForm tiene que preguntar otra vez.
+/// </summary>
+public sealed record WkPapeleraRequest(
+    [Required] string Wkname,
+    [Required] string Username,
+    string? Motivo = null,
+    string Accion = "MOVER",   // MOVER | RESTAURAR
+    bool Confirmar = false
+);
 /// <summary>
 /// POST /api/liberacion/crear
 /// Si sobreescribir=false y hay lote activo → SP devuelve 400 DUPLICADA.

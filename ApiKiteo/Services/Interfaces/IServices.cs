@@ -167,7 +167,8 @@ public interface IMacroService
 public interface ILiberacionService
 {
     Task<ServiceResult<LiberacionSemanasResponse>> GetSemanasAsync(
-        string estatus, string cliente, CancellationToken ct = default);
+        string estatus, string cliente, bool incluirSinCargaActual = false,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Crea el lote de liberación en BD y linkea las semanas.
@@ -189,6 +190,14 @@ public interface ILiberacionService
 
     Task<ServiceResult<CorteIngresarResponse>> IngresarCorteAsync(
         CorteIngresarRequest request, CancellationToken ct = default);
+
+    /// <summary>POST /api/liberacion/wk/renombrar — compuerta 1.</summary>
+    Task<ServiceResult<WkRenombrarResponse>> WkRenombrarAsync(
+        WkRenombrarRequest request, CancellationToken ct = default);
+
+    /// <summary>POST /api/liberacion/wk/papelera — compuerta 1.</summary>
+    Task<ServiceResult<WkPapeleraResponse>> WkPapeleraAsync(
+        WkPapeleraRequest request, CancellationToken ct = default);
 
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);

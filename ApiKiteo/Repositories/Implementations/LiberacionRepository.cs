@@ -23,12 +23,17 @@ public sealed class LiberacionRepository : ILiberacionRepository
     /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> GetSemanasAsync(
         string estatus = "PendienteCorte", string cliente = "TODOS",
+        bool incluirSinCargaActual = false,
         CancellationToken ct = default)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync(
             _sp.LiberacionSemanas,
-            new { estatus, cliente },
+            // El nombre del parametro es el del SP, no el de C#: Dapper mapea
+            // por nombre y un @incluir_sin_carga_actual que no llega se queda
+            // en su default 0 sin avisar.
+            new { estatus, cliente,
+                  incluir_sin_carga_actual = incluirSinCargaActual },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }
@@ -94,6 +99,32 @@ public sealed class LiberacionRepository : ILiberacionRepository
         return await conn.QueryAsync(
             _sp.CorteIngresar,                              // ← _sp.CorteIngresar
             new { lote_id = loteId, wkname, semana, anio, username },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkRenombrarAsync(
+        string wkname, string username, bool confirmar,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.WkRenombrar,
+            new { wkname, usuario = username, confirmar },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkPapeleraAsync(
+        string wkname, string username, string? motivo, string accion,
+        bool confirmar, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.WkPapelera,
+            new { wkname, usuario = username, motivo, accion, confirmar },
             commandType: System.Data.CommandType.StoredProcedure,
             commandTimeout: 30);
     }

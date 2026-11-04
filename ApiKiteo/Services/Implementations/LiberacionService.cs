@@ -24,11 +24,13 @@ public sealed class LiberacionService : ILiberacionService
     // ── GET /api/liberacion/semanas ───────────────────────────────────────────
 
     public async Task<ServiceResult<LiberacionSemanasResponse>> GetSemanasAsync(
-        string estatus, string cliente, CancellationToken ct = default)
+        string estatus, string cliente, bool incluirSinCargaActual = false,
+        CancellationToken ct = default)
     {
         try
         {
-            var rows = await _repo.GetSemanasAsync(estatus, cliente, ct);
+            var rows = await _repo.GetSemanasAsync(
+                estatus, cliente, incluirSinCargaActual, ct);
             var resultados = rows
                 .Select(r => (IDictionary<string, object?>)r)
                 .Select(d => new LiberacionSemanaItem
@@ -51,7 +53,14 @@ public sealed class LiberacionService : ILiberacionService
                     Fechacorte = d.GetStr("fechacorte"),
                     DueDateMin = Fecha(d, "due_date_min"),
                     DueDateMax = Fecha(d, "due_date_max"),
-                    DueDatesDistintos = d.GetInt("due_dates_distintos")
+                    DueDatesDistintos = d.GetInt("due_dates_distintos"),
+
+                    // MF 4/11/2026 — las dos que el V3 agrego y nadie leia.
+                    // Con incluirSinCargaActual=1 los conteos pueden ser de una
+                    // carga de julio y se ven igual que los de hoy. Un numero
+                    // viejo que parece actual es peor que ningun numero.
+                    CargaFecha = Fecha(d, "carga_fecha"),
+                    DiasDesdeCarga = d.GetInt("dias_desde_carga")
                 })
                 .ToList();
 
@@ -298,6 +307,124 @@ public sealed class LiberacionService : ILiberacionService
             _logger.LogError(ex,
                 "Error IngresarCorte lote={L} wkname={W}", request.LoteId, request.Wkname);
             return ServiceResult<CorteIngresarResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── POST /api/liberacion/wk/renombrar ──────────────────────────
+
+    public async Task<ServiceResult<WkRenombrarResponse>> WkRenombrarAsync(
+            WkRenombrarRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Wk renombrar | wkname={W} usuario={U} confirmar={C}",
+                request.Wkname, request.Username, request.Confirmar);
+
+            var rows = await _repo.WkRenombrarAsync(
+                request.Wkname, request.Username, request.Confirmar, ct);
+
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<WkRenombrarResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? "ERROR";
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var detalle = primera.GetStr("detalle");
+
+            // El code del SP se pasa tal cual — mismo trato que DUPLICADA en
+            // crear — porque el WinForm decide con el: DESTINO_OCUPADO ofrece
+            // papelera o merge, FUERA_DE_VENTANA solo explica. Un "RENOMBRAR_ERR"
+            // generico obligaria a leer el texto del mensaje para decidir.
+            if (httpStatus != 200)
+                return ServiceResult<WkRenombrarResponse>.Fail(
+                    httpStatus,
+                    string.IsNullOrWhiteSpace(detalle) ? mensaje : mensaje + "  ·  " + detalle,
+                    code);
+
+            return ServiceResult<WkRenombrarResponse>.Ok(
+                new WkRenombrarResponse(
+                    Ok: true,
+                    Code: code,
+                    Mensaje: mensaje,
+                    Wkname: primera.GetStr("wkname"),
+                    NombreNuevo: primera.GetStr("nombre_nuevo"),
+                    Detalle: detalle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkRenombrar wkname={W}", request.Wkname);
+            return ServiceResult<WkRenombrarResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── POST /api/liberacion/wk/papelera ───────────────────────────
+
+    public async Task<ServiceResult<WkPapeleraResponse>> WkPapeleraAsync(
+            WkPapeleraRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Wk papelera | wkname={W} accion={A} usuario={U} confirmar={C}",
+                request.Wkname, request.Accion, request.Username, request.Confirmar);
+
+            var rows = await _repo.WkPapeleraAsync(
+                request.Wkname, request.Username, request.Motivo,
+                request.Accion, request.Confirmar, ct);
+
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<WkPapeleraResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? "ERROR";
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var detalle = primera.GetStr("detalle");
+
+            if (httpStatus != 200)
+                return ServiceResult<WkPapeleraResponse>.Fail(
+                    httpStatus,
+                    string.IsNullOrWhiteSpace(detalle) ? mensaje : mensaje + "  ·  " + detalle,
+                    code);
+
+            // TIENE_MACRO viene con 200 a proposito: no es un error, es un alto
+            // que el front tiene que volver a preguntar. Si saliera 409 el
+            // WinForm lo pintaria como falla y nadie podria continuar.
+            return ServiceResult<WkPapeleraResponse>.Ok(
+                new WkPapeleraResponse(
+                    Ok: true,
+                    Code: code,
+                    Mensaje: mensaje,
+                    Wkname: primera.GetStr("wkname"),
+                    EstatusNuevo: primera.GetStr("estatus_nuevo"),
+                    Detalle: detalle,
+                    // Convert.ToBoolean y NO GetInt: el helper de la casa esta
+                    // probado sobre columnas int — en el selector, liberada y
+                    // en_ventana salen de un CASE THEN 0 ELSE 1 — y esta
+                    // columna es bit de verdad. Si GetInt no reconoce un bool
+                    // devuelve null, el ?? 0 lo vuelve false y el alto por
+                    // macro generada desaparece sin que nadie se entere: justo
+                    // la bandera que no se puede perder en silencio.
+                    RequiereConfirmacionFuerte: Convert.ToBoolean(
+                        primera.GetValueOrDefault("requiere_confirmacion_fuerte") ?? false)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkPapelera wkname={W} accion={A}",
+                request.Wkname, request.Accion);
+            return ServiceResult<WkPapeleraResponse>.Fail(
                 500, "Error interno.", ErrorCodes.Kiteo500);
         }
     }

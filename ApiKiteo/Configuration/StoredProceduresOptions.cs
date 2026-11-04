@@ -61,6 +61,12 @@ public sealed class StoredProceduresOptions
     public string LiberacionSnapshotGet { get; init; } = string.Empty;  // Kit_vin_liberacion_snapshot_get
     public string LiberacionHistorial { get; init; } = string.Empty;  // Kit_vin_liberacion_historial
 
+    // ── MF 4/11/2026 · compuerta 1 ──────────────────────────────────────
+    // Objetos NUEVOS: no reemplazan nada, asi que se crearon con su nombre
+    // final (script 174) sin el baile del _V2 y el sp_rename.
+    public string WkRenombrar { get; init; } = string.Empty;  // Kit_vin_wk_renombrar
+    public string WkPapelera { get; init; } = string.Empty;  // Kit_vin_wk_papelera
+
     public string Scheduling { get; init; } = string.Empty;
 
     // ── Descaneo ──────────────────────────────────────────────────────────────────

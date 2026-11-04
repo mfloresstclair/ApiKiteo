@@ -273,6 +273,7 @@ public interface ILiberacionRepository
     /// </summary>
     Task<IEnumerable<dynamic>> GetSemanasAsync(
         string estatus = "PendienteCorte", string cliente = "TODOS",
+        bool incluirSinCargaActual = false,
         CancellationToken ct = default);
 
     /// <summary>
@@ -313,6 +314,25 @@ public interface ILiberacionRepository
     Task<IEnumerable<dynamic>> IngresarCorteAsync(
         int loteId, string wkname, int semana, int anio, string username,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Renombra una semana al nombre que le toca por numero de camiones.
+    /// El nombre nuevo NO se manda: lo calcula el SP.
+    /// confirmar=false simula.
+    /// Ejecuta: Kit_vin_wk_renombrar
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkRenombrarAsync(
+        string wkname, string username, bool confirmar,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Manda una semana a la papelera (estatus IGNORADA) o la restaura.
+    /// No borra y no toca el wkname. confirmar=false simula.
+    /// Ejecuta: Kit_vin_wk_papelera
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkPapeleraAsync(
+        string wkname, string username, string? motivo, string accion,
+        bool confirmar, CancellationToken ct = default);
 
     /// <summary>
     /// Lista lotes de la semana actual y la anterior.

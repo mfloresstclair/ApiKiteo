@@ -605,6 +605,18 @@ public sealed record LiberacionSemanaItem
     public string? DueDateMin { get; init; }
     public string? DueDateMax { get; init; }
     public int? DueDatesDistintos { get; init; }
+
+    /// <summary>
+    /// Fecha de la carga con la que se midieron Camiones y Filas. NULL = la
+    /// semana no tiene carga y los conteos vienen vacios.
+    /// </summary>
+    public string? CargaFecha { get; init; }
+
+    /// <summary>
+    /// Dias desde esa carga. Existe para que el cliente pueda decir "estos
+    /// numeros son de hace 97 dias" en vez de enseñarlos como si fueran de hoy.
+    /// </summary>
+    public int? DiasDesdeCarga { get; init; }
 }
 
 /// <summary>POST /api/liberacion — resumen (det=0)</summary>
@@ -689,6 +701,47 @@ public sealed record CorteIngresarResponse(
     string Mensaje,
     int SemanasPendientes,
     string? Fechacorte   // fecha derivada por el SP — el WinForms la muestra en la columna
+);
+
+/// <summary>
+/// POST /api/liberacion/wk/renombrar
+///
+/// Code se pasa tal cual del SP — igual que LiberacionCrearResponse pasa
+/// DUPLICADA — porque el WinForm NO reacciona igual a todos:
+///   SIMULACION      → enseña NombreNuevo y pide confirmar
+///   OK | SIN_CAMBIO → refresca la rejilla
+///   DESTINO_OCUPADO → Detalle trae quien ocupa el nombre: ofrece papelera/merge
+///   FUERA_DE_VENTANA | MACRO_ACTIVA | SIN_CARGA | NOMBRE_RARO → solo explica
+///
+/// Ninguna de las dos respuestas trae fecha, y eso es deliberado: la trampa de
+/// la casa es GetStr sobre un DateTime, que sale con la cultura DEL SERVIDOR
+/// ("21/08/2026 11:16:00 p. m."). Si alguien agrega una fecha aqui, va con el
+/// helper ListasService.Fecha(...), no con GetStr.
+/// </summary>
+public sealed record WkRenombrarResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    string? Wkname,
+    string? NombreNuevo,
+    string? Detalle
+);
+
+/// <summary>
+/// POST /api/liberacion/wk/papelera
+///
+/// RequiereConfirmacionFuerte=true llega con Code=TIENE_MACRO y http 200: NO es
+/// un error, es un alto. El piso puede estar trabajando con esa macro y la
+/// papelera esconde la semana de la pantalla.
+/// </summary>
+public sealed record WkPapeleraResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    string? Wkname,
+    string? EstatusNuevo,
+    string? Detalle,
+    bool RequiereConfirmacionFuerte
 );
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
