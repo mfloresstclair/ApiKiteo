@@ -144,6 +144,19 @@ public sealed class LiberacionRepository : ILiberacionRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkSacarCortadosAsync(
+        string wkname, string username, bool confirmar,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.WkSacarCortados,
+            new { wkname, usuario = username, confirmar },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 60);
+    }
+
+    /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default)
     {

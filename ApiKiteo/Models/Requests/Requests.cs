@@ -229,6 +229,18 @@ public sealed record WkPremergeRequest(
     [Required] string Username,
     bool Confirmar = false
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/sacar-cortados — 6/11/2026 MF, compuerta 1.
+///
+/// Saca de una semana de Pre-Corte los VINs que ya tienen macro en otra
+/// semana; regresan a donde se cortaron. Confirmar=false simula.
+/// </summary>
+public sealed record WkSacarCortadosRequest(
+    [Required] string Wkname,
+    [Required] string Username,
+    bool Confirmar = false
+);
 /// <summary>
 /// POST /api/liberacion/crear
 /// Si sobreescribir=false y hay lote activo → SP devuelve 400 DUPLICADA.

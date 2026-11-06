@@ -788,6 +788,21 @@ public sealed record WkPremergeResponse(
     string? WknameFinal,
     string? Detalle
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/sacar-cortados
+///
+/// Code: SIMULACION | OK | SIN_CAMBIO (200). Negativas como error con su
+/// codigo: PARAM_INVALIDO (400), NO_EXISTE (404), FUERA_DE_VENTANA,
+/// YA_GENERADA, SIN_CARGA, ES_FANTASMA (409).
+/// </summary>
+public sealed record WkSacarCortadosResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    string? Wkname,
+    string? Detalle
+);
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
 /// </summary>

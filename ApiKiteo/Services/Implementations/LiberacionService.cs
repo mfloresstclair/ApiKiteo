@@ -490,6 +490,55 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
+    // ── POST /api/liberacion/wk/sacar-cortados ─────────────────────
+
+    public async Task<ServiceResult<WkSacarCortadosResponse>> WkSacarCortadosAsync(
+            WkSacarCortadosRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Wk sacar cortados | wkname={W} usuario={U} confirmar={C}",
+                request.Wkname, request.Username, request.Confirmar);
+
+            var rows = await _repo.WkSacarCortadosAsync(
+                request.Wkname, request.Username, request.Confirmar, ct);
+
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<WkSacarCortadosResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? "ERROR";
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var detalle = primera.GetStr("detalle");
+
+            if (httpStatus != 200)
+                return ServiceResult<WkSacarCortadosResponse>.Fail(
+                    httpStatus,
+                    string.IsNullOrWhiteSpace(detalle) ? mensaje : mensaje + "  ·  " + detalle,
+                    code);
+
+            return ServiceResult<WkSacarCortadosResponse>.Ok(
+                new WkSacarCortadosResponse(
+                    Ok: true,
+                    Code: code,
+                    Mensaje: mensaje,
+                    Wkname: primera.GetStr("wkname"),
+                    Detalle: detalle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkSacarCortados wkname={W}", request.Wkname);
+            return ServiceResult<WkSacarCortadosResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
 
     // ── GET /api/liberacion/list ──────────────────────────────────────────────
 

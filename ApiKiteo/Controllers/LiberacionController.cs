@@ -262,6 +262,36 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
+    /// Saca de una semana de Pre-Corte los VINs que ya tienen macro en otra
+    /// semana (6/11/2026 MF). Regresan a la semana donde se cortaron; se
+    /// repuntan Vines de todas sus cargas. confirmar=false simula.
+    ///
+    /// Codigos: SIMULACION, OK, SIN_CAMBIO (200); PARAM_INVALIDO (400);
+    /// NO_EXISTE (404); FUERA_DE_VENTANA, YA_GENERADA, SIN_CARGA, ES_FANTASMA (409).
+    /// </summary>
+    [HttpPost("wk/sacar-cortados")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> WkSacarCortados(
+        [FromBody] WkSacarCortadosRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkSacarCortadosAsync(request, ct));
+    }
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Usado por el panel izquierdo del form de Corte.
     /// </summary>

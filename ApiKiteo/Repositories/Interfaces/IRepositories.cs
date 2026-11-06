@@ -343,6 +343,14 @@ public interface ILiberacionRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Saca de una semana de Pre-Corte los VINs ya cortados en otra.
+    /// Ejecuta: Kit_vin_wk_sacar_cortados
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkSacarCortadosAsync(
+        string wkname, string username, bool confirmar,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Ejecuta: Kit_vin_liberacion_list
     /// </summary>
