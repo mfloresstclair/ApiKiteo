@@ -60,7 +60,15 @@ public sealed class LiberacionService : ILiberacionService
                     // carga de julio y se ven igual que los de hoy. Un numero
                     // viejo que parece actual es peor que ningun numero.
                     CargaFecha = Fecha(d, "carga_fecha"),
-                    DiasDesdeCarga = d.GetInt("dias_desde_carga")
+                    DiasDesdeCarga = d.GetInt("dias_desde_carga"),
+
+                    // 6/11/2026 MF — selector V4. Con el SP de antes las cinco
+                    // llegan nulas y el BOSS no marca nada: no truena.
+                    Vins = d.GetInt("vins"),
+                    YaCortados = d.GetInt("ya_cortados"),
+                    YaCortadosEn = d.GetStr("ya_cortados_en"),
+                    NumNombre = d.GetInt("num_nombre"),
+                    NombreCuadra = d.GetInt("nombre_cuadra") is int nc ? (bool?)(nc == 1) : null
                 })
                 .ToList();
 

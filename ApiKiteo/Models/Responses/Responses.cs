@@ -617,6 +617,35 @@ public sealed record LiberacionSemanaItem
     /// numeros son de hace 97 dias" en vez de enseñarlos como si fueran de hoy.
     /// </summary>
     public int? DiasDesdeCarga { get; init; }
+
+    // ── 6/11/2026 MF — compuerta 1, punto 3: la bandera de Pre-Corte ─────────
+    //
+    // El guard YA_CORTADOS de Kit_vin_liberacion_crear impide liberar una
+    // semana fantasma, pero Adriana se enteraba hasta intentar liberarla. El
+    // selector V4 calcula lo mismo, con la misma regla, para cada fila.
+
+    /// <summary>VINs distintos de la carga de referencia. NULL = sin carga.</summary>
+    public int? Vins { get; init; }
+
+    /// <summary>
+    /// De esos VINs, cuantos ya tienen macro activa con OTRO nombre (sin contar
+    /// _RE). Igual a Vins = fantasma, va a la papelera. Entre cero y Vins =
+    /// parcial, hay que sacar esos camiones antes de liberar. Es exactamente lo
+    /// que el guard de liberacion va a rechazar.
+    /// </summary>
+    public int? YaCortados { get; init; }
+
+    /// <summary>En que semanas estan ya cortados, separadas por coma.</summary>
+    public string? YaCortadosEn { get; init; }
+
+    /// <summary>El numero que dice el nombre (wk45_171_ZA → 171). NULL si no trae.</summary>
+    public int? NumNombre { get; init; }
+
+    /// <summary>
+    /// true si el numero del nombre es igual a Camiones o a Filas (la regla de
+    /// Loader_vines_wkname). NULL cuando no se puede medir.
+    /// </summary>
+    public bool? NombreCuadra { get; init; }
 }
 
 /// <summary>POST /api/liberacion — resumen (det=0)</summary>
