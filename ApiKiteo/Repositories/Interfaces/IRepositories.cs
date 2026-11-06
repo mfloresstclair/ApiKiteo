@@ -335,6 +335,14 @@ public interface ILiberacionRepository
         bool confirmar, CancellationToken ct = default);
 
     /// <summary>
+    /// Junta dos semanas de Pre-Corte antes de generar. confirmar=false simula.
+    /// Ejecuta: Kit_vin_wk_premerge
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkPremergeAsync(
+        string wkBase, string wkMerge, string username, bool confirmar,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Ejecuta: Kit_vin_liberacion_list
     /// </summary>

@@ -437,6 +437,59 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
+    // ── POST /api/liberacion/wk/premerge ───────────────────────────
+
+    public async Task<ServiceResult<WkPremergeResponse>> WkPremergeAsync(
+            WkPremergeRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Wk premerge | base={B} merge={M} usuario={U} confirmar={C}",
+                request.WkBase, request.WkMerge, request.Username, request.Confirmar);
+
+            var rows = await _repo.WkPremergeAsync(
+                request.WkBase, request.WkMerge, request.Username, request.Confirmar, ct);
+
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<WkPremergeResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? "ERROR";
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var detalle = primera.GetStr("detalle");
+
+            // Mismo trato que renombrar: el code del SP pasa tal cual, porque
+            // el WinForm decide con el (YA_CORTADOS y TRASLAPE mandan a la
+            // papelera; CARGAS_DISTINTAS a revisar cual sobra).
+            if (httpStatus != 200)
+                return ServiceResult<WkPremergeResponse>.Fail(
+                    httpStatus,
+                    string.IsNullOrWhiteSpace(detalle) ? mensaje : mensaje + "  ·  " + detalle,
+                    code);
+
+            return ServiceResult<WkPremergeResponse>.Ok(
+                new WkPremergeResponse(
+                    Ok: true,
+                    Code: code,
+                    Mensaje: mensaje,
+                    WknameFinal: primera.GetStr("wkname_final"),
+                    Detalle: detalle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkPremerge base={B} merge={M}",
+                request.WkBase, request.WkMerge);
+            return ServiceResult<WkPremergeResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
 
     // ── GET /api/liberacion/list ──────────────────────────────────────────────
 

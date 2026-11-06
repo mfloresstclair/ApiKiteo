@@ -772,6 +772,22 @@ public sealed record WkPapeleraResponse(
     string? Detalle,
     bool RequiereConfirmacionFuerte
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/premerge
+///
+/// Code: SIMULACION | OK (200). Las negativas llegan como error con su codigo:
+/// PARAM_INVALIDO (400), NO_EXISTE (404), FUERA_DE_VENTANA, YA_GENERADA,
+/// YA_CORTADOS, TIPO_DISTINTO, SIN_CARGA, CARGAS_DISTINTAS, TRASLAPE,
+/// NOMBRE_RARO, NOMBRE_OCUPADO (409).
+/// </summary>
+public sealed record WkPremergeResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    string? WknameFinal,
+    string? Detalle
+);
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
 /// </summary>

@@ -199,6 +199,10 @@ public interface ILiberacionService
     Task<ServiceResult<WkPapeleraResponse>> WkPapeleraAsync(
         WkPapeleraRequest request, CancellationToken ct = default);
 
+    /// <summary>POST /api/liberacion/wk/premerge — compuerta 1.</summary>
+    Task<ServiceResult<WkPremergeResponse>> WkPremergeAsync(
+        WkPremergeRequest request, CancellationToken ct = default);
+
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
     Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(

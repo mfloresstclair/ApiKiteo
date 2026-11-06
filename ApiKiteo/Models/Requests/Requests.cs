@@ -212,6 +212,23 @@ public sealed record WkPapeleraRequest(
     string Accion = "MOVER",   // MOVER | RESTAURAR
     bool Confirmar = false
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/premerge — 6/11/2026 MF, compuerta 1.
+///
+/// Junta dos semanas de Pre-Corte ANTES de liberarlas: repunta sus Vines a un
+/// solo nombre y deja un header; el otro queda IGNORADA, sin borrarse.
+///
+/// WkBase decide el numero de semana del nombre final (wk45 + wk46 → wk45_N
+/// si la base es la 45). El numero de camiones NO se manda: lo calcula el SP,
+/// igual que en renombrar. Confirmar=false simula y devuelve el nombre final.
+/// </summary>
+public sealed record WkPremergeRequest(
+    [Required] string WkBase,
+    [Required] string WkMerge,
+    [Required] string Username,
+    bool Confirmar = false
+);
 /// <summary>
 /// POST /api/liberacion/crear
 /// Si sobreescribir=false y hay lote activo → SP devuelve 400 DUPLICADA.

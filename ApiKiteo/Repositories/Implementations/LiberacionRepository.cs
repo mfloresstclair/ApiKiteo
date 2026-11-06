@@ -130,6 +130,20 @@ public sealed class LiberacionRepository : ILiberacionRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkPremergeAsync(
+        string wkBase, string wkMerge, string username, bool confirmar,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        // 60 y no 30: repunta Vines de TODAS las cargas de las dos semanas.
+        return await conn.QueryAsync(
+            _sp.WkPremerge,
+            new { wkBase, wkMerge, usuario = username, confirmar },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 60);
+    }
+
+    /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default)
     {

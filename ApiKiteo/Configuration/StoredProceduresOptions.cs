@@ -66,6 +66,7 @@ public sealed class StoredProceduresOptions
     // final (script 174) sin el baile del _V2 y el sp_rename.
     public string WkRenombrar { get; init; } = string.Empty;  // Kit_vin_wk_renombrar
     public string WkPapelera { get; init; } = string.Empty;  // Kit_vin_wk_papelera
+    public string WkPremerge { get; init; } = string.Empty;  // Kit_vin_wk_premerge (script 206)
 
     public string Scheduling { get; init; } = string.Empty;
 

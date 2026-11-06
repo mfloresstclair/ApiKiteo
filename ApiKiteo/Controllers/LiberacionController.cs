@@ -228,6 +228,40 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
+    /// Junta dos semanas de Pre-Corte antes de liberarlas (6/11/2026 MF).
+    ///
+    /// Repunta los Vines de las dos —de todas sus cargas— a un solo nombre y
+    /// deja un header; el otro queda IGNORADA, sin borrarse. No toca macro:
+    /// si alguna ya esta generada contesta YA_GENERADA. confirmar=false simula
+    /// y devuelve wknameFinal.
+    ///
+    /// Codigos: SIMULACION, OK (200); PARAM_INVALIDO (400); NO_EXISTE (404);
+    /// FUERA_DE_VENTANA, YA_GENERADA, YA_CORTADOS, TIPO_DISTINTO, SIN_CARGA,
+    /// CARGAS_DISTINTAS, TRASLAPE, NOMBRE_RARO, NOMBRE_OCUPADO (409).
+    /// </summary>
+    [HttpPost("wk/premerge")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> WkPremerge(
+        [FromBody] WkPremergeRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.WkBase) || string.IsNullOrWhiteSpace(request.WkMerge))
+            return BadRequest(ErrorResponse.Create(
+                "Los campos 'wkBase' y 'wkMerge' son requeridos.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkPremergeAsync(request, ct));
+    }
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Usado por el panel izquierdo del form de Corte.
     /// </summary>
