@@ -803,6 +803,45 @@ public sealed record WkSacarCortadosResponse(
     string? Wkname,
     string? Detalle
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/mover
+///
+/// Code: SIMULACION | OK (200). Negativas como error con su codigo:
+/// PARAM_INVALIDO (400), NO_EXISTE (404), FUERA_DE_VENTANA, YA_GENERADA,
+/// SIN_CARGA, NOMBRE_RARO, TIPO_DISTINTO, CARGAS_DISTINTAS, NO_ENCONTRADO,
+/// TODA_LA_SEMANA, HERMANA_AMBIGUA, YA_CORTADOS, NOMBRE_OCUPADO (409).
+/// Hermanas: texto con las otras semanas que traen esos camiones y a donde
+/// irian (o por que no se pueden mover).
+/// </summary>
+public sealed record WkMoverResponse(
+    bool Ok,
+    string Code,
+    string Mensaje,
+    string? WknameOrigen,
+    string? WknameDestino,
+    string? Hermanas,
+    string? Detalle
+);
+
+/// <summary>Un master de una semana: GET /api/liberacion/wk/camiones.</summary>
+public sealed record WkCamionItem
+{
+    public string Camion { get; init; } = string.Empty;
+    public string Vin { get; init; } = string.Empty;
+    /// <summary>yyyy-MM-dd, ya formateado por el SP (no se usa la cultura del servidor).</summary>
+    public string? DueDate { get; init; }
+    public string? Modelo { get; init; }
+    public string? Grupo { get; init; }
+}
+
+/// <summary>GET /api/liberacion/wk/camiones?wkname= — la ultima carga de la semana.</summary>
+public sealed record WkCamionesResponse(
+    bool Ok,
+    string Wkname,
+    int Total,
+    IReadOnlyList<WkCamionItem> Resultados
+);
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
 /// </summary>

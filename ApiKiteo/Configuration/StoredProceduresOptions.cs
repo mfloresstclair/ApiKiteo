@@ -68,6 +68,8 @@ public sealed class StoredProceduresOptions
     public string WkPapelera { get; init; } = string.Empty;  // Kit_vin_wk_papelera
     public string WkPremerge { get; init; } = string.Empty;  // Kit_vin_wk_premerge (script 206)
     public string WkSacarCortados { get; init; } = string.Empty;  // Kit_vin_wk_sacar_cortados (script 211)
+    public string WkMover { get; init; } = string.Empty;  // Kit_vin_wk_mover (script 223a)
+    public string WkCamiones { get; init; } = string.Empty;  // Kit_vin_wk_camiones (script 224)
 
     public string Scheduling { get; init; } = string.Empty;
 

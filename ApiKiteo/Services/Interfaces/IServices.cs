@@ -207,6 +207,14 @@ public interface ILiberacionService
     Task<ServiceResult<WkSacarCortadosResponse>> WkSacarCortadosAsync(
         WkSacarCortadosRequest request, CancellationToken ct = default);
 
+    /// <summary>POST /api/liberacion/wk/mover — compuerta 1 (merge parcial).</summary>
+    Task<ServiceResult<WkMoverResponse>> WkMoverAsync(
+        WkMoverRequest request, CancellationToken ct = default);
+
+    /// <summary>GET /api/liberacion/wk/camiones — de donde escoge la pantalla de mover.</summary>
+    Task<ServiceResult<WkCamionesResponse>> WkCamionesAsync(
+        string wkname, CancellationToken ct = default);
+
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
     Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(

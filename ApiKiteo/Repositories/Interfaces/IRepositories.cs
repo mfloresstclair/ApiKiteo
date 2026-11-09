@@ -351,6 +351,22 @@ public interface ILiberacionRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Pasa camiones o masters de una semana a otra (merge parcial).
+    /// Ejecuta: Kit_vin_wk_mover
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkMoverAsync(
+        string origen, string ids, string username, string? destino,
+        string? semanaNueva, bool porCamion, bool incluirHermanas, bool confirmar,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Camiones y masters de la ultima carga de una semana.
+    /// Ejecuta: Kit_vin_wk_camiones
+    /// </summary>
+    Task<IEnumerable<dynamic>> WkCamionesAsync(
+        string wkname, CancellationToken ct = default);
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Ejecuta: Kit_vin_liberacion_list
     /// </summary>

@@ -241,6 +241,26 @@ public sealed record WkSacarCortadosRequest(
     [Required] string Username,
     bool Confirmar = false
 );
+
+/// <summary>
+/// POST /api/liberacion/wk/mover — 9/11/2026 MF, compuerta 1 (merge parcial).
+///
+/// Pasa camiones (o masters, con PorCamion=false) de una semana de Pre-Corte
+/// a otra existente del mismo tipo (Destino) o a una nueva (SemanaNueva =
+/// "wk46"; el nombre lo calcula el SP). Uno de los dos, no ambos.
+/// IncluirHermanas=true mueve tambien las semanas hermanas que trae la
+/// simulacion. Confirmar=false simula.
+/// </summary>
+public sealed record WkMoverRequest(
+    [Required] string Origen,
+    [Required] IReadOnlyList<string> Ids,
+    [Required] string Username,
+    string? Destino = null,
+    string? SemanaNueva = null,
+    bool PorCamion = true,
+    bool IncluirHermanas = false,
+    bool Confirmar = false
+);
 /// <summary>
 /// POST /api/liberacion/crear
 /// Si sobreescribir=false y hay lote activo → SP devuelve 400 DUPLICADA.

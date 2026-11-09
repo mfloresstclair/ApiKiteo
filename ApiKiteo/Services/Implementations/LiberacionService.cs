@@ -539,6 +539,103 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
+    // ── POST /api/liberacion/wk/mover ──────────────────────────────
+
+    public async Task<ServiceResult<WkMoverResponse>> WkMoverAsync(
+            WkMoverRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            // El SP recibe los ids separados por coma: se limpian aqui para
+            // que un espacio o un renglon vacio no se vuelvan un id.
+            var ids = string.Join(",", (request.Ids ?? Array.Empty<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct());
+
+            _logger.LogInformation(
+                "Wk mover | origen={O} destino={D} nueva={N} porCamion={P} hermanas={H} ids={I} usuario={U} confirmar={C}",
+                request.Origen, request.Destino, request.SemanaNueva, request.PorCamion,
+                request.IncluirHermanas, ids, request.Username, request.Confirmar);
+
+            var rows = await _repo.WkMoverAsync(
+                request.Origen, ids, request.Username, request.Destino, request.SemanaNueva,
+                request.PorCamion, request.IncluirHermanas, request.Confirmar, ct);
+
+            var primera = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<WkMoverResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var httpStatus = Convert.ToInt32(primera.GetValueOrDefault("http_status") ?? 500);
+            var code = primera.GetStr("code") ?? "ERROR";
+            var mensaje = primera.GetStr("message") ?? string.Empty;
+            var hermanas = primera.GetStr("hermanas");
+            var detalle = primera.GetStr("detalle");
+
+            if (httpStatus != 200)
+            {
+                // Las negativas viajan como ErrorResponse (mensaje + codigo): lo
+                // que explica el rechazo (las hermanas en HERMANA_AMBIGUA, los
+                // VINs en YA_CORTADOS) va pegado al mensaje para no perderlo.
+                var texto = mensaje;
+                if (!string.IsNullOrWhiteSpace(hermanas)) texto += "  ·  hermanas: " + hermanas;
+                if (!string.IsNullOrWhiteSpace(detalle)) texto += "  ·  " + detalle;
+                return ServiceResult<WkMoverResponse>.Fail(httpStatus, texto, code);
+            }
+
+            return ServiceResult<WkMoverResponse>.Ok(
+                new WkMoverResponse(
+                    Ok: true,
+                    Code: code,
+                    Mensaje: mensaje,
+                    WknameOrigen: primera.GetStr("wkname_origen"),
+                    WknameDestino: primera.GetStr("wkname_destino"),
+                    Hermanas: hermanas,
+                    Detalle: detalle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkMover origen={O}", request.Origen);
+            return ServiceResult<WkMoverResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
+    // ── GET /api/liberacion/wk/camiones ────────────────────────────
+
+    public async Task<ServiceResult<WkCamionesResponse>> WkCamionesAsync(
+            string wkname, CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _repo.WkCamionesAsync(wkname, ct);
+            var lista = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new WkCamionItem
+                {
+                    Camion = d.GetStr("camion") ?? string.Empty,
+                    Vin = d.GetStr("vin") ?? string.Empty,
+                    DueDate = d.GetStr("due_date"),   // ya viene como texto yyyy-MM-dd
+                    Modelo = d.GetStr("modelo"),
+                    Grupo = d.GetStr("grupo")
+                })
+                .ToList();
+
+            return ServiceResult<WkCamionesResponse>.Ok(
+                new WkCamionesResponse(true, wkname, lista.Count, lista));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error WkCamiones wkname={W}", wkname);
+            return ServiceResult<WkCamionesResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
 
     // ── GET /api/liberacion/list ──────────────────────────────────────────────
 

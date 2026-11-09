@@ -157,6 +157,37 @@ public sealed class LiberacionRepository : ILiberacionRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkMoverAsync(
+        string origen, string ids, string username, string? destino,
+        string? semanaNueva, bool porCamion, bool incluirHermanas, bool confirmar,
+        CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.WkMover,
+            new
+            {
+                origen, ids, usuario = username, destino,
+                semana_nueva = semanaNueva, por_camion = porCamion,
+                incluir_hermanas = incluirHermanas, confirmar
+            },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 60);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> WkCamionesAsync(
+        string wkname, CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.WkCamiones,
+            new { wkname },
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 30);
+    }
+
+    /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default)
     {

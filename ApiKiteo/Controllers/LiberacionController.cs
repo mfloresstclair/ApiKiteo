@@ -292,6 +292,65 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
+    /// Pasa camiones (o masters) de una semana de Pre-Corte a otra existente
+    /// del mismo tipo, o a una nueva (merge parcial; 9/11/2026 MF). Repunta
+    /// Vines de todas las cargas, recalcula los nombres y renumera GRUPO.
+    /// confirmar=false simula y trae las hermanas.
+    ///
+    /// Codigos: SIMULACION, OK (200); PARAM_INVALIDO (400); NO_EXISTE (404);
+    /// FUERA_DE_VENTANA, YA_GENERADA, SIN_CARGA, NOMBRE_RARO, TIPO_DISTINTO,
+    /// CARGAS_DISTINTAS, NO_ENCONTRADO, TODA_LA_SEMANA, HERMANA_AMBIGUA,
+    /// YA_CORTADOS, NOMBRE_OCUPADO (409).
+    /// </summary>
+    [HttpPost("wk/mover")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> WkMover(
+        [FromBody] WkMoverRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        if (string.IsNullOrWhiteSpace(request.Origen))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'origen' es requerido.", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(ErrorResponse.Create(
+                "El campo 'username' es requerido.", ErrorCodes.Kiteo400));
+
+        if (request.Ids is null || !request.Ids.Any(s => !string.IsNullOrWhiteSpace(s)))
+            return BadRequest(ErrorResponse.Create(
+                "Hay que escoger al menos un camion o master ('ids').", ErrorCodes.Kiteo400));
+
+        if (string.IsNullOrWhiteSpace(request.Destino) == string.IsNullOrWhiteSpace(request.SemanaNueva))
+            return BadRequest(ErrorResponse.Create(
+                "Va 'destino' (semana existente) o 'semanaNueva' (wkNN), uno de los dos.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkMoverAsync(request, ct));
+    }
+
+    /// <summary>
+    /// Camiones y masters de la ultima carga de una semana: de donde escoge
+    /// la pantalla de mover. Semana inexistente → lista vacia.
+    /// </summary>
+    [HttpGet("wk/camiones")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> WkCamiones(
+        [FromQuery] string wkname,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(wkname))
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'wkname' es requerido.", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.WkCamionesAsync(wkname.Trim(), ct));
+    }
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Usado por el panel izquierdo del form de Corte.
     /// </summary>
