@@ -188,6 +188,16 @@ public sealed class LiberacionRepository : ILiberacionRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<dynamic>> UltimaCargaAsync(CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync(
+            _sp.UltimaCarga,
+            commandType: System.Data.CommandType.StoredProcedure,
+            commandTimeout: 15);
+    }
+
+    /// <inheritdoc/>
     public async Task<IEnumerable<dynamic>> LiberacionListAsync(
         string cliente = "TODOS", CancellationToken ct = default)
     {

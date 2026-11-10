@@ -842,6 +842,25 @@ public sealed record WkCamionesResponse(
     int Total,
     IReadOnlyList<WkCamionItem> Resultados
 );
+
+/// <summary>
+/// GET /api/liberacion/ultima-carga — 9/11/2026 MF, compuerta 1 punto 7.
+/// Quien y cuando cargo DevTest: el job semanal (Update_DevTest) y el
+/// microservicio (Loader_Job). Fechas ya como texto (yyyy-MM-dd HH:mm).
+/// Texto: lo que pinta Pre-Corte.
+/// </summary>
+public sealed record UltimaCargaResponse(
+    bool Ok,
+    string Texto,
+    string? JobEn,
+    string? JobSemana,
+    string? JobDetalle,
+    string? MicroEn,
+    string? MicroEstado,
+    string? MicroUsuario,
+    int? MicroVines,
+    string? MicroMensaje
+);
 /// POST /api/liberacion/crear
 /// loteId = 0 si http_status != 200.
 /// </summary>

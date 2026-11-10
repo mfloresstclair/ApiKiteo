@@ -636,6 +636,42 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
+    // ── GET /api/liberacion/ultima-carga ───────────────────────────
+
+    public async Task<ServiceResult<UltimaCargaResponse>> UltimaCargaAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var primera = (await _repo.UltimaCargaAsync(ct))
+                .Select(r => (IDictionary<string, object?>)r)
+                .FirstOrDefault();
+
+            if (primera is null)
+                return ServiceResult<UltimaCargaResponse>.Fail(
+                    500, "El SP no devolvió respuesta.", ErrorCodes.Kiteo500);
+
+            var vines = primera.GetValueOrDefault("micro_vines");
+            return ServiceResult<UltimaCargaResponse>.Ok(
+                new UltimaCargaResponse(
+                    Ok: true,
+                    Texto: primera.GetStr("texto") ?? string.Empty,
+                    JobEn: primera.GetStr("job_en"),
+                    JobSemana: primera.GetStr("job_semana"),
+                    JobDetalle: primera.GetStr("job_detalle"),
+                    MicroEn: primera.GetStr("micro_en"),
+                    MicroEstado: primera.GetStr("micro_estado"),
+                    MicroUsuario: primera.GetStr("micro_usuario"),
+                    MicroVines: vines is null or DBNull ? null : Convert.ToInt32(vines),
+                    MicroMensaje: primera.GetStr("micro_mensaje")));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error UltimaCarga");
+            return ServiceResult<UltimaCargaResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
 
     // ── GET /api/liberacion/list ──────────────────────────────────────────────
 

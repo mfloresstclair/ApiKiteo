@@ -351,6 +351,15 @@ public sealed class LiberacionController : KiteoBaseController
     }
 
     /// <summary>
+    /// Quien y cuando cargo DevTest: el job semanal (Update_DevTest) y el
+    /// microservicio (boton Ejecutar Carga). Para el aviso de Pre-Corte.
+    /// </summary>
+    [HttpGet("ultima-carga")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UltimaCarga(CancellationToken ct = default)
+        => FromResult(await _service.UltimaCargaAsync(ct));
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Usado por el panel izquierdo del form de Corte.
     /// </summary>

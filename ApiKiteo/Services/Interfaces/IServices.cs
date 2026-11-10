@@ -215,6 +215,9 @@ public interface ILiberacionService
     Task<ServiceResult<WkCamionesResponse>> WkCamionesAsync(
         string wkname, CancellationToken ct = default);
 
+    /// <summary>GET /api/liberacion/ultima-carga — el aviso de Pre-Corte.</summary>
+    Task<ServiceResult<UltimaCargaResponse>> UltimaCargaAsync(CancellationToken ct = default);
+
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
     Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(

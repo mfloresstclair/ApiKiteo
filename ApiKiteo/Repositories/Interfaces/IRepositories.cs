@@ -367,6 +367,12 @@ public interface ILiberacionRepository
         string wkname, CancellationToken ct = default);
 
     /// <summary>
+    /// Quien y cuando cargo DevTest (job semanal y microservicio).
+    /// Ejecuta: Kit_vin_ultima_carga
+    /// </summary>
+    Task<IEnumerable<dynamic>> UltimaCargaAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Ejecuta: Kit_vin_liberacion_list
     /// </summary>
