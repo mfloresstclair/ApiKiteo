@@ -50,7 +50,7 @@ public sealed class LiberacionService : ILiberacionService
                     EnVentana = (d.GetInt("en_ventana") ?? 0) == 1,
                     Camiones = d.GetInt("camiones"),
                     Filas = d.GetInt("filas"),
-                    Fechacorte = d.GetStr("fechacorte"),
+                    Fechacorte = FechaCorte(d),
                     DueDateMin = Fecha(d, "due_date_min"),
                     DueDateMax = Fecha(d, "due_date_max"),
                     DueDatesDistintos = d.GetInt("due_dates_distintos"),
@@ -101,6 +101,30 @@ public sealed class LiberacionService : ILiberacionService
                                    DateTimeStyles.None, out var parsed)
                  ? parsed.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture)
                  : raw.ToString()
+        };
+    }
+
+    /// <summary>
+    /// fechacorte es varchar(20) en el header y en Kit_vin_corte_ingresar, y
+    /// desde el 155 viene como 'yyyy-MM-dd': ese texto pasa tal cual. Si algun
+    /// SP la devuelve como date/datetime, GetStr la formatearia con la cultura
+    /// DEL SERVIDOR ("04/11/2026 12:00:00 a. m."); aqui sale 'yyyy-MM-dd'.
+    /// No usa Fecha(...) a proposito: esa le pegaria 'T00:00:00' al texto.
+    /// </summary>
+    private static string? FechaCorte(IDictionary<string, object?> d, string key = "fechacorte")
+    {
+        object? raw = null;
+        foreach (var kv in d)
+            if (string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase)) { raw = kv.Value; break; }
+
+        return raw switch
+        {
+            null or DBNull => null,
+            DateTime dt => dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            DateTimeOffset o => o.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            DateOnly dd => dd.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            string t => string.IsNullOrWhiteSpace(t) ? null : t.Trim(),
+            _ => raw.ToString()
         };
     }
 
@@ -250,7 +274,7 @@ public sealed class LiberacionService : ILiberacionService
                 {
                     Wkname = d.GetStr("wkname") ?? string.Empty,
                     Estatus = d.GetStr("estatus") ?? string.Empty,
-                    Fechacorte = d.GetStr("fechacorte"),
+                    Fechacorte = FechaCorte(d),
                     Cliente = d.GetStr("cliente") ?? string.Empty,
                     Ingresado = Convert.ToInt32(d.GetValueOrDefault("ingresado") ?? 0) == 1
                 })
@@ -301,7 +325,7 @@ public sealed class LiberacionService : ILiberacionService
                 return ServiceResult<CorteIngresarResponse>.Fail(httpStatus, mensaje, "CORTE_ERR");
 
             var pendientes = Convert.ToInt32(primera.GetValueOrDefault("semanas_pendientes") ?? -1);
-            var fechaDerivada = primera.GetStr("fechacorte"); // el SP la devuelve si quieres
+            var fechaDerivada = FechaCorte(primera); // el SP la devuelve si quieres
 
             return ServiceResult<CorteIngresarResponse>.Ok(
                 new CorteIngresarResponse(
@@ -636,6 +660,50 @@ public sealed class LiberacionService : ILiberacionService
         }
     }
 
+    // ── GET /api/liberacion/buscar-vin ─────────────────────────────
+
+    public async Task<ServiceResult<BuscarVinResponse>> BuscarVinAsync(
+            string q, CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _repo.BuscarVinAsync(q, ct);
+            var lista = rows
+                .Select(r => (IDictionary<string, object?>)r)
+                .Select(d => new BuscarVinItem
+                {
+                    Fuente = d.GetStr("fuente") ?? string.Empty,
+                    Wkname = d.GetStr("wkname") ?? string.Empty,
+                    Vin = d.GetStr("vin") ?? string.Empty,
+                    Estatus = d.GetStr("estatus"),
+                    Lote = d.GetInt("lote"),
+                    Fechacorte = FechaCorte(d),
+                    Grupo = d.GetStr("grupo"),
+                    Locacion = d.GetStr("locacion"),
+                    LocacionDesc = d.GetStr("locacion_desc"),
+                    Arneses = d.GetInt("arneses"),
+                    Escaneados = d.GetInt("escaneados"),
+                    Entregados = d.GetInt("entregados"),
+                    Carga = d.GetStr("carga"),        // ya viene como texto yyyy-MM-dd
+                    DueDate = d.GetStr("due_date"),   // idem
+                    Modelo = d.GetStr("modelo"),
+                    Texto = d.GetStr("texto") ?? string.Empty
+                })
+                .ToList();
+
+            _logger.LogInformation("BuscarVin | q={Q} resultados={N}", q, lista.Count);
+
+            return ServiceResult<BuscarVinResponse>.Ok(
+                new BuscarVinResponse(true, q, lista.Count, lista));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error BuscarVin q={Q}", q);
+            return ServiceResult<BuscarVinResponse>.Fail(
+                500, "Error interno.", ErrorCodes.Kiteo500);
+        }
+    }
+
     // ── GET /api/liberacion/ultima-carga ───────────────────────────
 
     public async Task<ServiceResult<UltimaCargaResponse>> UltimaCargaAsync(CancellationToken ct = default)
@@ -889,7 +957,7 @@ public sealed class LiberacionService : ILiberacionService
                 {
                     Wkname     = d.GetStr("wkname") ?? string.Empty,
                     Estatus    = d.GetStr("estatus") ?? string.Empty,
-                    Fechacorte = d.GetStr("fechacorte")
+                    Fechacorte = FechaCorte(d)
                 })
                 .ToList();
 

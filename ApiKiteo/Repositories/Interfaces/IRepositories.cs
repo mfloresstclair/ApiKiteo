@@ -373,6 +373,12 @@ public interface ILiberacionRepository
     Task<IEnumerable<dynamic>> UltimaCargaAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Donde esta un camion (VIN o camion).
+    /// Ejecuta: Kit_vin_buscar_vin
+    /// </summary>
+    Task<IEnumerable<dynamic>> BuscarVinAsync(string q, CancellationToken ct = default);
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Ejecuta: Kit_vin_liberacion_list
     /// </summary>

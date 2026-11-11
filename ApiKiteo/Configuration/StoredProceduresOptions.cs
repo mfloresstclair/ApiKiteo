@@ -71,6 +71,7 @@ public sealed class StoredProceduresOptions
     public string WkMover { get; init; } = string.Empty;  // Kit_vin_wk_mover (script 223a)
     public string WkCamiones { get; init; } = string.Empty;  // Kit_vin_wk_camiones (script 224)
     public string UltimaCarga { get; init; } = string.Empty;  // Kit_vin_ultima_carga (script 228)
+    public string BuscarVin { get; init; } = string.Empty;  // Kit_vin_buscar_vin (script 230)
 
     public string Scheduling { get; init; } = string.Empty;
 

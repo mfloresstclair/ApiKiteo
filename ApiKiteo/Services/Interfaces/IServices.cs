@@ -218,6 +218,9 @@ public interface ILiberacionService
     /// <summary>GET /api/liberacion/ultima-carga — el aviso de Pre-Corte.</summary>
     Task<ServiceResult<UltimaCargaResponse>> UltimaCargaAsync(CancellationToken ct = default);
 
+    /// <summary>GET /api/liberacion/buscar-vin — donde esta un camion.</summary>
+    Task<ServiceResult<BuscarVinResponse>> BuscarVinAsync(string q, CancellationToken ct = default);
+
     Task<ServiceResult<LiberacionListResponse>> LiberacionListAsync(
         string cliente, CancellationToken ct = default);
     Task<ServiceResult<FechaCorteDerivadaResponse>> GetFechaCorteAsync(

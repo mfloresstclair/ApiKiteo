@@ -360,6 +360,25 @@ public sealed class LiberacionController : KiteoBaseController
         => FromResult(await _service.UltimaCargaAsync(ct));
 
     /// <summary>
+    /// Donde esta un camion: VIN completo o camion (la parte antes del guion).
+    /// Semana, grupo, locacion y escaneos si ya tiene macro; si no, la semana de
+    /// Pre-Corte donde esta cargado. Minimo 5 caracteres. Sin resultados → lista vacia.
+    /// </summary>
+    [HttpGet("buscar-vin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> BuscarVin(
+        [FromQuery] string q,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 5)
+            return BadRequest(ErrorResponse.Create(
+                "El parámetro 'q' es requerido (mínimo 5 caracteres).", ErrorCodes.Kiteo400));
+
+        return FromResult(await _service.BuscarVinAsync(q.Trim(), ct));
+    }
+
+    /// <summary>
     /// Lista lotes de la semana actual y la anterior.
     /// Usado por el panel izquierdo del form de Corte.
     /// </summary>

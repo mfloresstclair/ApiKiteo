@@ -844,6 +844,39 @@ public sealed record WkCamionesResponse(
 );
 
 /// <summary>
+/// Un renglon de GET /api/liberacion/buscar-vin — 10/11/2026 MF (script 230).
+/// Fuente MACRO = generada (el piso la ve); PRECORTE = cargada sin macro.
+/// Fechas ya como texto yyyy-MM-dd.
+/// </summary>
+public sealed record BuscarVinItem
+{
+    public string Fuente { get; init; } = string.Empty;
+    public string Wkname { get; init; } = string.Empty;
+    public string Vin { get; init; } = string.Empty;
+    public string? Estatus { get; init; }
+    public int? Lote { get; init; }
+    public string? Fechacorte { get; init; }
+    public string? Grupo { get; init; }
+    public string? Locacion { get; init; }
+    public string? LocacionDesc { get; init; }
+    public int? Arneses { get; init; }
+    public int? Escaneados { get; init; }
+    public int? Entregados { get; init; }
+    public string? Carga { get; init; }
+    public string? DueDate { get; init; }
+    public string? Modelo { get; init; }
+    public string Texto { get; init; } = string.Empty;
+}
+
+/// <summary>GET /api/liberacion/buscar-vin?q= — donde esta un camion.</summary>
+public sealed record BuscarVinResponse(
+    bool Ok,
+    string Q,
+    int Total,
+    IReadOnlyList<BuscarVinItem> Resultados
+);
+
+/// <summary>
 /// GET /api/liberacion/ultima-carga — 9/11/2026 MF, compuerta 1 punto 7.
 /// Quien y cuando cargo DevTest: el job semanal (Update_DevTest) y el
 /// microservicio (Loader_Job). Fechas ya como texto (yyyy-MM-dd HH:mm).
