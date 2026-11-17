@@ -76,7 +76,7 @@ public sealed class VinsController : KiteoBaseController
     /// <summary>
     /// Estatus de VINs por semana con porcentaje de completado.
     /// </summary>
-    /// <param name="modo">1=pendientes (default) | 2=entregados | 3=todos</param>
+    /// <param name="modo">1=pendientes (default) | 2=entregados | 3=todos | 4=completos (rack kiteado sin contar mandar a final; MF 17/11/2026)</param>
     [HttpGet("semana_vin_status")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -91,9 +91,10 @@ public sealed class VinsController : KiteoBaseController
             return BadRequest(ErrorResponse.Create(
                 "El parámetro 'wkname' es requerido.", ErrorCodes.Kiteo400));
 
-        if (modo is < 1 or > 3)
+        // MF 17/11/2026 — + modo 4 (completos), tab "Completos" de la estación.
+        if (modo is < 1 or > 4)
             return BadRequest(ErrorResponse.Create(
-                "El parámetro 'modo' debe ser 1 (pending), 2 (delivered) o 3 (all).",
+                "El parámetro 'modo' debe ser 1 (pending), 2 (delivered), 3 (all) o 4 (complete).",
                 ErrorCodes.Kiteo400));
 
         return FromResult(await _service.GetSemanaVinStatusAsync(
